@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vantage Pricing Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --black:#000000;--blue:#0060C4;--blue-lt:#E8EEF7;--gray50:#F5F7FA;--white:#FFFFFF;
+  --navy:#0B1E3D;--teal:#00A896;--teal-lt:#E6F7F5;--gold:#FFFBEA;--bg:#F2F4F8;
+  --g100:#EAECF0;--g200:#D5D9E0;--g400:#8E95A3;--g600:#505869;--g900:#0F1623;
+  --err:#DC2626;--ok:#059669;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--g900);min-height:100vh;}
+header{background:var(--black);padding:0 40px;height:62px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--blue);}
+.logo{display:flex;align-items:center;flex-shrink:0;gap:10px;}
+.h-title{color:#fff;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.2px;}
+.h-sub{color:rgba(255,255,255,0.4);font-size:11px;margin-top:1px;}
+.stepper{display:flex;align-items:center;gap:3px;margin-left:auto;}
+.step{display:flex;align-items:center;gap:6px;opacity:0.35;transition:opacity 0.2s;}
+.step.active{opacity:1;}.step.done{opacity:0.6;}
+.sdot{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);transition:all 0.2s;}
+.step.active .sdot{background:var(--blue);color:#fff;}.step.done .sdot{background:var(--ok);color:#fff;}
+.slbl{font-size:11px;color:rgba(255,255,255,0.55);font-weight:500;}.sdiv{width:18px;height:1px;background:rgba(255,255,255,0.12);}
+main{max-width:860px;margin:0 auto;padding:32px 20px;}
+.card{background:#fff;border-radius:10px;border:1px solid var(--g200);box-shadow:0 1px 8px rgba(0,0,0,0.06);overflow:hidden;}
+.card-bd{padding:18px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:7px;border:none;font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.btn-black{background:var(--black);color:#fff;}.btn-black:hover{background:#222;}
+.btn-blue{background:var(--blue);color:#fff;}.btn-blue:hover{background:#0052aa;}
+.btn-teal{background:var(--teal);color:#fff;}.btn-teal:hover{background:#008a7c;}
+.btn-ghost{background:var(--g100);color:var(--g600);}.btn-ghost:hover{background:var(--g200);}
+.btn-lg{padding:12px 26px;font-size:14px;border-radius:9px;}
+.stage{display:none;}.stage.active{display:block;}
+#dropZone{border:2px dashed var(--g200);border-radius:10px;padding:50px 40px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--g100);}
+#dropZone.over,#dropZone:hover{border-color:var(--blue);background:#EBF2FC;}
+.drop-icon{margin:0 auto 14px;display:block;opacity:0.4;}
+.drop-h{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--navy);margin-bottom:5px;}
+.drop-s{font-size:12.5px;color:var(--g400);margin-bottom:18px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;}
+.info-c{padding:16px;background:#fff;border-radius:9px;border:1px solid var(--g200);}
+.info-ico{font-size:20px;margin-bottom:8px;}.info-t{font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.info-d{font-size:11.5px;color:var(--g600);line-height:1.5;}
+.spin-wrap{text-align:center;padding:80px 0;}
+.spinner{width:42px;height:42px;border:4px solid var(--g200);border-top-color:var(--blue);border-radius:50%;animation:spin 0.75s linear infinite;margin:0 auto 18px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin-h{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--navy);}
+.spin-s{color:var(--g600);font-size:13px;margin-top:6px;}
+.rev-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+.rev-h{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--navy);}
+.rev-s{font-size:12.5px;color:var(--g600);margin-top:3px;}
+.banner{background:var(--black);border-left:4px solid var(--blue);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;gap:24px;flex-wrap:wrap;}
+.banner-lbl{font-size:9.5px;color:rgba(255,255,255,0.4);font-weight:700;letter-spacing:0.9px;text-transform:uppercase;}
+.banner-val{color:#fff;font-weight:700;font-size:13.5px;margin-top:2px;}
+.tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;}
+.tab{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--g200);background:#fff;color:var(--g600);cursor:pointer;transition:all 0.12s;}
+.tab.active{background:var(--black);border-color:var(--black);color:#fff;font-weight:600;}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fi{display:flex;flex-direction:column;gap:4px;}
+.fi label{font-size:11px;font-weight:500;color:var(--g600);}
+.fi .fnote{font-style:italic;color:var(--g400);font-size:10px;}
+.fi input{padding:8px 10px;border:1px solid var(--g200);border-radius:6px;font-size:12.5px;font-family:'DM Sans',sans-serif;background:var(--gold);color:var(--blue);font-weight:600;width:100%;outline:none;transition:border-color 0.12s;}
+.fi input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,96,196,0.1);}
+.live{margin-top:14px;padding:14px 16px;background:var(--teal-lt);border-radius:9px;border:1px solid rgba(0,168,150,0.2);}
+.live-lbl{font-size:10px;font-weight:700;color:var(--teal);letter-spacing:0.8px;margin-bottom:10px;}
+.live-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.live-il{font-size:10.5px;color:var(--teal);font-weight:600;}
+.live-iv{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:var(--navy);margin-top:2px;}
+.done-ico{font-size:50px;text-align:center;margin-bottom:8px;animation:pop 0.4s ease-out;}
+@keyframes pop{0%{transform:scale(0.5);opacity:0;}80%{transform:scale(1.1);}100%{transform:scale(1);opacity:1;}}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.metric-box{background:var(--black);border-top:3px solid var(--blue);border-radius:9px;padding:16px;text-align:center;}
+.metric-v{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;}
+.metric-l{font-size:10px;color:rgba(255,255,255,0.45);margin-top:4px;font-weight:500;}
+.sheet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.sheet-c{padding:14px;background:#fff;border-radius:9px;border:1px solid var(--g200);}
+.sheet-t{font-weight:700;color:var(--navy);font-size:12.5px;margin-bottom:3px;}
+.sheet-d{font-size:11px;color:var(--g600);line-height:1.45;}
+.sh{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;color:var(--navy);margin-bottom:5px;}
+.ss{color:var(--g600);font-size:13.5px;margin-bottom:22px;line-height:1.5;}
+.err{margin-top:10px;padding:12px 16px;border-radius:7px;background:#FEF2F2;border:1px solid #FECACA;color:var(--err);font-size:13px;font-weight:500;line-height:1.5;}
+.err-tip{font-size:11px;color:var(--g600);margin-top:5px;font-weight:400;}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <!-- Vantage "V" chevron mark -->
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="36" height="36" rx="4" fill="#0060C4"/>
+      <polygon points="6,8 18,28 30,8 25,8 18,20 11,8" fill="white"/>
+    </svg>
+    <svg width="90" height="18" viewBox="0 0 90 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="0" y="14" font-family="Century Gothic, Arial, sans-serif" font-size="14" font-weight="700" fill="white" letter-spacing="2">VANTAGE</text>
+    </svg>
+  </div>
+  <div><div class="h-title">Pricing Engine</div><div class="h-sub">Synopsis → Full 7-Sheet Model</div></div>
+  <div class="stepper" id="stepper" style="display:none">
+    <div class="step" data-s="0"><div class="sdot">1</div><div class="slbl">Upload</div></div>
+    <div class="sdiv"></div>
+    <div class="step" data-s="1"><div class="sdot">2</div><div class="slbl">Extract</div></div>
+    <div class="sdiv"></div>
+    <div class="step" data-s="2"><div class="sdot">3</div><div class="slbl">Review</div></div>
+    <div class="sdiv"></div>
+    <div class="step" data-s="3"><div class="sdot">4</div><div class="slbl">Download</div></div>
+  </div>
+</header>
+<main>
+
+<div class="stage active" id="s-upload">
+  <div class="sh">Upload Synopsis or Proposal</div>
+  <p class="ss">Upload a clinical trial synopsis (PDF) or Tigermed proposal. Claude extracts all key assumptions and generates a full 7-sheet Vantage pricing model — Cover, Assumptions, Sponsor Output, Overview, Management Services, Clinical Costs, and P&amp;L.</p>
+  <div class="card"><div class="card-bd">
+    <div id="dropZone">
+      <svg class="drop-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8E95A3" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+      <div class="drop-h">Drop your file here</div>
+      <div class="drop-s">PDF synopsis, Tigermed proposal, DOCX or TXT</div>
+      <button class="btn btn-teal" onclick="document.getElementById('fi').click()">Browse File</button>
+      <input type="file" id="fi" accept=".pdf,.docx,.txt,.doc" style="display:none">
+    </div>
+    <div class="err hidden" id="uploadErr"><span id="uploadErrMsg"></span><div class="err-tip">💡 For more detail: right-click → Inspect → Console tab</div></div>
+  </div></div>
+
+  <div class="info-grid">
+    <div class="info-c"><div class="info-ico">🔍</div><div class="info-t">AI Extraction</div><div class="info-d">Claude reads your PDF and extracts sites, subjects, phases, monitoring visits, and the Tigermed CRO cost.</div></div>
+    <div class="info-c"><div class="info-ico">✏️</div><div class="info-t">Review & Edit</div><div class="info-d">Check every extracted value across 8 groups. Live revenue estimate updates as you type.</div></div>
+    <div class="info-c"><div class="info-ico">📊</div><div class="info-t">7-Sheet Output</div><div class="info-d">Cover, Assumptions, Sponsor Output, Overview, Management Services, Clinical Costs, P&amp;L — identical to Vantage master template.</div></div>
+  </div>
+</div>
+
+<div class="stage" id="s-extracting">
+  <div class="spin-wrap">
+    <div class="spinner"></div>
+    <div class="spin-h">Analyzing Document...</div>
+    <div class="spin-s" id="spinFile">Claude is extracting study assumptions</div>
+  </div>
+</div>
+
+<div class="stage" id="s-review">
+  <div class="rev-top">
+    <div><div class="rev-h">Review Extracted Assumptions</div><div class="rev-s" id="revSub">Review and adjust before generating</div></div>
+    <div style="display:flex;gap:7px;flex-shrink:0;margin-top:3px;">
+      <button class="btn btn-ghost" onclick="goTo('upload')">← Back</button>
+      <button class="btn btn-blue" onclick="generateModel()">⬇ Generate Model</button>
+    </div>
+  </div>
+  <div class="banner">
+    <div><div class="banner-lbl">Study</div><div class="banner-val" id="bStudy">—</div></div>
+    <div><div class="banner-lbl">Sponsor</div><div class="banner-val" id="bSponsor">—</div></div>
+    <div><div class="banner-lbl">Phase</div><div class="banner-val" id="bPhase">—</div></div>
+    <div><div class="banner-lbl">Duration</div><div class="banner-val" id="bDur">—</div></div>
+    <div><div class="banner-lbl">KZ Sites</div><div class="banner-val" id="bSites">—</div></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="card"><div class="card-bd"><div class="field-grid" id="fieldGrid"></div></div></div>
+  <div class="live">
+    <div class="live-lbl">▸ LIVE ESTIMATE</div>
+    <div class="live-grid">
+      <div><div class="live-il">Mgmt Fee</div><div class="live-iv" id="eMgmt">—</div></div>
+      <div><div class="live-il">Clinical Revenue</div><div class="live-iv" id="eClin">—</div></div>
+      <div><div class="live-il">Total Revenue</div><div class="live-iv" id="eTotal">—</div></div>
+      <div><div class="live-il">EBITDA (est.)</div><div class="live-iv" id="eEbitda">—</div></div>
+    </div>
+  </div>
+  <div style="margin-top:14px;text-align:right;">
+      <button id="dlBtn" class="btn btn-black btn-lg" onclick="generateModel()">⬇ Download Vantage Pricing Model</button>
+  </div>
+</div>
+
+<div class="stage" id="s-done">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div class="done-ico">✅</div>
+    <div class="rev-h">Model Downloaded</div>
+    <p style="color:var(--g600);font-size:13.5px;margin-top:6px;">Your 7-sheet Vantage Pricing Model has been saved.</p>
+  </div>
+  <div class="metric-grid">
+    <div class="metric-box"><div class="metric-v" id="dMgmt">—</div><div class="metric-l">Management Fee</div></div>
+    <div class="metric-box"><div class="metric-v" id="dClin">—</div><div class="metric-l">Clinical Revenue</div></div>
+    <div class="metric-box"><div class="metric-v" id="dTotal">—</div><div class="metric-l">Total Revenue</div></div>
+    <div class="metric-box"><div class="metric-v" id="dEbitda">—</div><div class="metric-l">EBITDA (est.)</div></div>
+  </div>
+  <div class="sheet-grid" style="margin-bottom:20px;">
+    <div class="sheet-c"><div class="sheet-t">📋 Cover</div><div class="sheet-d">Study identity, prepared-by info, model contents guide</div></div>
+    <div class="sheet-c"><div class="sheet-t">⚙️ Assumptions</div><div class="sheet-d">All inputs — blue editable, yellow = formula/auto-calculated</div></div>
+    <div class="sheet-c"><div class="sheet-t">📤 Sponsor Output</div><div class="sheet-d">Clean sponsor-facing budget — no internal markup visible</div></div>
+    <div class="sheet-c"><div class="sheet-t">🗂 Overview</div><div class="sheet-d">One-page deal snapshot: mgmt fee by category + revenue summary</div></div>
+    <div class="sheet-c"><div class="sheet-t">💼 Management Services</div><div class="sheet-d">Full fee schedule, all 8 service categories</div></div>
+    <div class="sheet-c"><div class="sheet-t">🏥 Clinical Costs + P&amp;L</div><div class="sheet-d">Per-patient cost schedule + monthly cash flow</div></div>
+  </div>
+  <div style="text-align:center;display:flex;gap:10px;justify-content:center;">
+    <button class="btn btn-ghost" onclick="goTo('review')">← Edit Assumptions</button>
+    <button class="btn btn-black" onclick="resetApp()">+ New Study</button>
+  </div>
+</div>
+
+</main>
+<script>
+// ══════════════════════════════════════════════════════
+// FIELD DEFINITIONS
+// ══════════════════════════════════════════════════════
+const FIELDS = [
+  {k:"study_name",    lbl:"Study Name / Protocol",                     grp:"Study Identity",   t:"text",   def:""},
+  {k:"sponsor",       lbl:"Sponsor",                                    grp:"Study Identity",   t:"text",   def:""},
+  {k:"phase",         lbl:"Phase",                                      grp:"Study Identity",   t:"text",   def:""},
+  {k:"indication",    lbl:"Indication / Disease Area",                  grp:"Study Identity",   t:"text",   def:""},
+  {k:"est_start",     lbl:"Estimated Start",                            grp:"Study Identity",   t:"text",   def:"Q2 2026"},
+  {k:"start_mo",      lbl:"Trial Start Month (1=Jan 12=Dec)",           grp:"Timeline",         t:"number", def:4,      note:"e.g. 4 = April"},
+  {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", def:2026,   note:"Four-digit year"},
+  {k:"startup_mo",    lbl:"Start-Up Phase (months)",                    grp:"Timeline",         t:"number", def:5,      note:"Site selection, regulatory submissions"},
+  {k:"enroll_mo",     lbl:"Enrollment / Recruitment (months)",          grp:"Timeline",         t:"number", def:8,      note:"Active patient recruitment window"},
+  {k:"treat_mo",      lbl:"Treatment Period (months)",                  grp:"Timeline",         t:"number", def:4,      note:"Last patient in to last patient treatment complete"},
+  {k:"followup_mo",   lbl:"Follow-Up Period (months)",                  grp:"Timeline",         t:"number", def:1},
+  {k:"closeout_mo",   lbl:"Close-Out Period (months)",                  grp:"Timeline",         t:"number", def:2,      note:"Data lock, CSR, TMF transfer"},
+  {k:"kz_sites",      lbl:"Kazakhstan Sites Initiated",                 grp:"Sites & Subjects", t:"number", def:10,     note:"Full Vantage-managed sites"},
+  {k:"sites_feas",    lbl:"Sites Feasibility Assessed",                 grp:"Sites & Subjects", t:"number", def:15},
+  {k:"sites_screen",  lbl:"Sites Screened",                             grp:"Sites & Subjects", t:"number", def:12},
+  {k:"subj_screen",   lbl:"Subjects Screened",                          grp:"Sites & Subjects", t:"number", def:135},
+  {k:"subj_enroll",   lbl:"Subjects Enrolled",                          grp:"Sites & Subjects", t:"number", def:108},
+  {k:"ec_init",       lbl:"Ethics Committee Initial Submissions",       grp:"Regulatory",       t:"number", def:1,      note:"One submission for Kazakhstan"},
+  {k:"ec_annual",     lbl:"Ethics Committee Annual Reports",            grp:"Regulatory",       t:"number", def:2,      note:"One per year while trial is active"},
+  {k:"ctra",          lbl:"CTRAs Executed",                             grp:"Regulatory",       t:"number", def:10,     note:"One per Kazakhstan site"},
+  {k:"imv_1day",      lbl:"Interim Monitoring Visits 1 Day",            grp:"Monitoring",       t:"number", def:165,    note:"Bi-weekly during screening & treatment"},
+  {k:"imv_2day",      lbl:"Interim Monitoring Visits 2 Days",           grp:"Monitoring",       t:"number", def:60},
+  {k:"rmv",           lbl:"Remote Monitoring Visits",                   grp:"Monitoring",       t:"number", def:205,    note:"Weekly during screening & treatment"},
+  {k:"siv",           lbl:"Site Initiation Visits",                     grp:"Monitoring",       t:"number", def:10,     note:"= sites initiated"},
+  {k:"cov",           lbl:"Site Close-Out Visits",                      grp:"Monitoring",       t:"number", def:10},
+  {k:"co_mon",        lbl:"Co-Monitoring Visits",                       grp:"Monitoring",       t:"number", def:10},
+  {k:"tmf_qc",        lbl:"TMF QC Visits",                              grp:"Monitoring",       t:"number", def:3},
+  {k:"sae",           lbl:"SAE Reports",                                grp:"Monitoring",       t:"number", def:10},
+  {k:"susar",         lbl:"SUSAR Reports",                              grp:"Monitoring",       t:"number", def:5},
+  {k:"sig_issues",    lbl:"Significant Issue Communications",           grp:"Monitoring",       t:"number", def:5},
+  {k:"tc_sponsor",    lbl:"Teleconferences with Sponsor",               grp:"PM & Safety",      t:"number", def:20},
+  {k:"tc_internal",   lbl:"Internal CRO Project TCs",                   grp:"PM & Safety",      t:"number", def:20},
+  {k:"site_pay",      lbl:"Site Payments Processed",                    grp:"PM & Safety",      t:"number", def:40,     note:"Quarterly x sites"},
+  {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number", def:2},
+  {k:"tigermed_cost", lbl:"Tigermed CRO Quote (USD)",                   grp:"Financial",        t:"number", def:4134072, note:"From Budget Summary page"},
+  {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", def:1.45,   note:"Revenue = Tigermed x Markup, e.g. 1.45"},
+  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.2,    note:"Portion billed at contract signing"},
+  {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", def:2500,   note:"Active during startup and enrollment"},
+  {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number", def:7050},
+  {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number", def:7050},
+  {k:"sal_almas",     lbl:"Almas salary monthly USD",                   grp:"Team Salaries",    t:"number", def:7050},
+  {k:"sal_didar",     lbl:"Didar salary monthly USD",                   grp:"Team Salaries",    t:"number", def:1500},
+  {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number", def:7050},
+  {k:"sal_alexander", lbl:"Alexander salary monthly USD",               grp:"Team Salaries",    t:"number", def:1000},
+  {k:"sal_shynar",    lbl:"Shynar salary monthly USD",                  grp:"Team Salaries",    t:"number", def:1000},
+  {k:"ciprian_pct",   lbl:"Ciprian Commission Rate",                    grp:"OpEx",             t:"number", def:0.005,  note:"Applied to all revenue each month"},
+  {k:"insurance_mo",  lbl:"Insurance monthly USD",                      grp:"OpEx",             t:"number", def:200},
+  {k:"tech_mo",       lbl:"Technology Stack monthly USD",               grp:"OpEx",             t:"number", def:500},
+  {k:"travel_m1",     lbl:"Travel and Accommodation Month 1",           grp:"OpEx",             t:"number", def:1000},
+  {k:"legal_m1",      lbl:"Legal and Compliance Month 1",               grp:"OpEx",             t:"number", def:1000},
+  {k:"audit_annual",  lbl:"Annual Compliance Audit",                    grp:"OpEx",             t:"number", def:3000,   note:"Fires every 12 months"},
+];
+
+const GROUPS = [...new Set(FIELDS.map(f=>f.grp))];
+let A = {};
+let activeFile = null;
+let activeGrp = GROUPS[0];
+
+FIELDS.forEach(f=>{ A[f.k]=f.def; });
+
+// ── NAVIGATION ──────────────────────────────────────
+const STAGES=['upload','extracting','review','done'];
+function goTo(name){
+  STAGES.forEach(s=>{ document.getElementById('s-'+s).classList.toggle('active',s===name); });
+  const si=STAGES.indexOf(name);
+  const st=document.getElementById('stepper');
+  st.style.display=si>0?'flex':'none';
+  document.querySelectorAll('.step').forEach((el,i)=>{
+    el.classList.toggle('active',i===si);
+    el.classList.toggle('done',i<si);
+  });
+  if(name==='review') renderReview();
+}
+function resetApp(){
+  A={};FIELDS.forEach(f=>{A[f.k]=f.def;});
+  activeFile=null;activeGrp=GROUPS[0];
+  document.getElementById('fi').value='';
+  document.getElementById('uploadErr').classList.add('hidden');
+  goTo('upload');
+}
+
+// ── FILE HANDLING ────────────────────────────────────
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fi').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+function showErr(msg){
+  console.error('[Vantage]', msg);
+  const errEl=document.getElementById('uploadErr');
+  document.getElementById('uploadErrMsg').textContent=msg;
+  errEl.classList.remove('hidden');
+  goTo('upload');
+}
+
+async function handleFile(f){
+  if(!f) return;
+  console.log('[Vantage] File selected:', f.name, f.size, 'bytes');
+
+  activeFile=f;
+  document.getElementById('uploadErr').classList.add('hidden');
+  document.getElementById('spinFile').textContent='Reading '+f.name+'…';
+  goTo('extracting');
+
+  try{
+    let content, ftype;
+    const ext=f.name.split('.').pop().toLowerCase();
+
+    if(ext==='pdf'){
+      document.getElementById('spinFile').textContent='Encoding PDF…';
+      console.log('[Vantage] Encoding PDF as base64…');
+      // Use FileReader which is more reliable than manual Uint8Array loop
+      content = await new Promise((resolve, reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=>{
+          // result is "data:application/pdf;base64,XXXX" — strip the prefix
+          const b64 = reader.result.split(',')[1];
+          resolve(b64);
+        };
+        reader.onerror = ()=>reject(new Error('Failed to read file: '+reader.error));
+        reader.readAsDataURL(f);
+      });
+      ftype='pdf';
+      console.log('[Vantage] PDF encoded, length:', content.length);
+    } else {
+      content=await f.text();
+      ftype='text';
+      console.log('[Vantage] Text file read, length:', content.length);
+    }
+
+    document.getElementById('spinFile').textContent='Claude is extracting assumptions from '+f.name+'…';
+    console.log('[Vantage] Calling Claude API…');
+    const ex=await extractFromSynopsis(content, ftype);
+    console.log('[Vantage] Extraction result:', ex);
+
+    FIELDS.forEach(field=>{
+      if(ex[field.k]!==undefined && ex[field.k]!==null && ex[field.k]!==''){
+        A[field.k]=ex[field.k];
+      }
+    });
+    goTo('review');
+
+  } catch(e){
+    console.error('[Vantage] Error:', e);
+    showErr('Error: '+e.message);
+  }
+}
+
+// ── CLAUDE API ───────────────────────────────────────
+async function extractFromSynopsis(fileContent,fileType){
+  const sys=`You are a clinical trial financial analyst at Vantage Clinical Trials (Kazakhstan CRO).
+Extract assumption values from a clinical trial synopsis or CRO proposal.
+Return ONLY valid JSON with these keys (use null for anything not found, never guess):
+study_name, sponsor, phase, indication, est_start,
+start_mo (1-12), start_yr (e.g. 2026),
+startup_mo, enroll_mo, treat_mo, followup_mo, closeout_mo,
+kz_sites, sites_feas, sites_screen, subj_screen, subj_enroll,
+ec_init (ethics committee initial submissions - typically 1 for KZ),
+ec_annual, ctra (= kz_sites),
+imv_1day, imv_2day, rmv, siv (=kz_sites), cov (=kz_sites), co_mon, tmf_qc,
+sae, susar, sig_issues,
+tc_sponsor, tc_internal, site_pay (quarterly x sites), periodic_saf,
+tigermed_cost (Tigermed Professional Service Fee USD - KEY input),
+markup (default 1.45), clin_upfront (default 0.2), kz_ops_mo (default 2500),
+sal_charlie, sal_zach, sal_almas, sal_didar, sal_alex, sal_alexander, sal_shynar (leave null),
+ciprian_pct (default 0.005), insurance_mo (default 200), tech_mo (default 500),
+travel_m1 (default 1000), legal_m1 (default 1000), audit_annual (default 3000)
+Return JSON only. No prose, no markdown.`;
+
+  let userContent;
+  if(fileType==='pdf'){
+    userContent=[
+      {type:'text',text:'Extract the clinical trial assumption values from this document. Return JSON only.'},
+      {type:'document',source:{type:'base64',media_type:'application/pdf',data:fileContent}}
+    ];
+  } else {
+    userContent=`Extract clinical trial assumption values:\n\n${fileContent}\n\nReturn JSON only.`;
+  }
+
+  const resp=await fetch('/api/claude',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sys,messages:[{role:'user',content:userContent}]})
+  });
+  if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(`API error ${resp.status}: ${err.error?.message||resp.statusText}`);}
+  const data=await resp.json();
+  const txt=(data.content||[]).map(b=>b.text||'').join('');
+  const clean=txt.replace(/```json|```/g,'').trim();
+  try{return JSON.parse(clean);}
+  catch{throw new Error('Could not parse AI response: '+txt.slice(0,200));}
+}
+
+// ── HELPERS ──────────────────────────────────────────
+function n(k){ return Number(A[k]??FIELDS.find(f=>f.k===k)?.def??0); }
+function fmt(v){ return '$'+Math.round(v).toLocaleString(); }
+function totalMo(){ return n('startup_mo')+n('enroll_mo')+n('treat_mo')+n('followup_mo')+n('closeout_mo'); }
+
+// ── SERVICES CALCULATION ─────────────────────────────
+function buildServices(){
+  const svc=[
+    {name:"Project Management Related Documentation Development and Review",items:[
+      {lbl:"Initial Study Familiarization",cost:1100,units:1},
+      {lbl:"Kazakhstan Informed Consent Documentation",cost:3000,units:1},
+      {lbl:"Site-Specific Informed Consent Form Development & Review",cost:800,units:n('kz_sites')},
+      {lbl:"Clinical Trial Research Agreement - Part 1",cost:2500,units:1},
+      {lbl:"Clinical Trial Research Agreement - Part 2",cost:5000,units:1},
+      {lbl:"Insurance Documentation Review",cost:850,units:1},
+      {lbl:"Country Version Advertisement Review",cost:100,units:1},
+      {lbl:"Distribute Protocol and Protocol Amendments to Clinical Sites",cost:500,units:1},
+      {lbl:"Study Plans & Study Tracker Review",cost:2000,units:1},
+    ]},
+    {name:"Specific Site Startup and Regulatory Activity",items:[
+      {lbl:"Negotiate and Execute a Confidentiality Disclosure Agreement",cost:500,units:n('sites_screen')},
+      {lbl:"Obtain Investigators Curriculum Vitaes and Credentials",cost:650,units:1},
+      {lbl:"Finalize List of Potential Investigators",cost:1500,units:1},
+      {lbl:"Site Feasibility Study",cost:250,units:n('sites_feas')},
+      {lbl:"Site Selection Visit",cost:2000,units:n('kz_sites')},
+      {lbl:"Negotiate the Standard / Maximum Budget per Site",cost:2500,units:1},
+      {lbl:"Negotiate Contract Language with Site",cost:250,units:1},
+      {lbl:"Distribute the Contract Templates and Protocol to Sites",cost:500,units:1},
+      {lbl:"Finalize Agreements with Investigators / Institutions",cost:1000,units:1},
+      {lbl:"Take Decision on Clinical Sites to Include in Study",cost:500,units:1},
+      {lbl:"Track Clinical Trial Agreements",cost:250,units:1},
+      {lbl:"Project Set Up at Study Site",cost:2500,units:n('kz_sites')},
+      {lbl:"Distribute Study-Specific Documents & Tools to Sites",cost:1000,units:1},
+      {lbl:"Project Set Up at Satellite Site (Recruitment Only)",cost:1000,units:0},
+      {lbl:"Central Ethics Committee Initial Submission",cost:4000,units:n('ec_init')},
+      {lbl:"Preparation of Documents for Clinical Trial Registration",cost:5000,units:1},
+      {lbl:"Submission of Clinical Trial Registration",cost:5000,units:1},
+      {lbl:"Ethics Committee Notification",cost:500,units:n('ec_init')},
+      {lbl:"Ethics Committee Annual Reporting",cost:2500,units:n('ec_annual')},
+      {lbl:"Health Authority Investigational New Drug Initial Submission",cost:5000,units:1},
+      {lbl:"Health Authority Notification",cost:500,units:1},
+      {lbl:"Health Authority Annual Reporting",cost:500,units:1},
+      {lbl:"Regulatory Coordination and Document Management",cost:3500,units:1},
+      {lbl:"Maintain Communication with Official Agencies During Technical Review",cost:3000,units:1},
+      {lbl:"Investigator Site File Set Up",cost:1000,units:n('kz_sites')},
+    ]},
+    {name:"Central Laboratory / Bioanalytical Laboratory Partner Management",items:[
+      {lbl:"Identifying Laboratory Partners",cost:1500,units:1},
+      {lbl:"Central Laboratory Vendor Contract Signed",cost:3500,units:1},
+      {lbl:"Central Laboratory Routine Communication",cost:300,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+      {lbl:"Bioanalytical Laboratory Vendor Contract Signed",cost:3500,units:1},
+      {lbl:"Bioanalytical Laboratory Routine Communication",cost:300,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+    ]},
+    {name:"Clinical Monitoring",items:[
+      {lbl:"Site Initiation Visit",cost:2500,units:n('siv')},
+      {lbl:"Interim Monitoring Visit - 1 Day",cost:1500,units:n('imv_1day')},
+      {lbl:"Remote Monitoring Visits",cost:750,units:n('rmv')},
+      {lbl:"In-House Remote Monitoring",cost:500,units:n('enroll_mo')*n('kz_sites')},
+      {lbl:"Communicate Significant Issues and Proposed Corrective Actions",cost:250,units:n('sig_issues')},
+      {lbl:"Follow Up on Issues Until Resolution",cost:150,units:n('sig_issues')},
+      {lbl:"Assess the Need for Additional Clinical Monitoring",cost:500,units:1},
+      {lbl:"Approve Closure and Replacement of Clinical Sites",cost:500,units:1},
+      {lbl:"Report Serious Adverse Events to Regulatory Authorities",cost:200,units:n('sae')},
+      {lbl:"Report Suspected Serious Adverse Reactions to Investigators",cost:150,units:n('susar')},
+      {lbl:"Report Suspected Unexpected Serious Adverse Reactions",cost:250,units:n('susar')},
+      {lbl:"Site Management",cost:150,units:n('kz_sites')*n('enroll_mo')},
+      {lbl:"Site Close-Out Visit",cost:2500,units:n('cov')},
+    ]},
+    {name:"Project Management and Progress Reporting",items:[
+      {lbl:"Bioanalytical Laboratory Vendor Routine Communication",cost:150,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+      {lbl:"Routine Communication with Tigermed",cost:500,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+      {lbl:"General Progress Reporting to Tigermed",cost:250,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+      {lbl:"Update Study Trackers",cost:250,units:(n('startup_mo')+n('enroll_mo')+n('treat_mo'))*2},
+      {lbl:"Document Translation Quality Control and Management",cost:5000,units:1},
+      {lbl:"Site Payment Processing and Tracking",cost:200,units:n('site_pay')},
+      {lbl:"Routine Communication with Sites",cost:250,units:n('kz_sites')*(n('startup_mo')+n('enroll_mo')+n('treat_mo'))},
+      {lbl:"Sponsor Kazakhstan Visit",cost:5000,units:1},
+      {lbl:"Site Supply Management",cost:500,units:1},
+      {lbl:"Study Document Support and Preparation",cost:3000,units:1},
+      {lbl:"Develop and Maintain a List of All Protocol Violations",cost:2500,units:1},
+    ]},
+    {name:"Meeting and Training",items:[
+      {lbl:"Study Team Training",cost:5000,units:2},
+      {lbl:"Protocol Training",cost:1500,units:1},
+      {lbl:"Protocol Amendment Training",cost:500,units:1},
+      {lbl:"Organize and Attend Investigator Meeting",cost:7000,units:1},
+      {lbl:"Sponsor / Contract Research Organization Kick-Off Meeting",cost:1000,units:1},
+      {lbl:"Contract Research Organization Internal Kick-Off Meeting",cost:2000,units:1},
+      {lbl:"Regular Teleconference with Sponsor",cost:500,units:n('tc_sponsor')},
+      {lbl:"Contract Research Organization Internal Project Teleconference",cost:350,units:n('tc_internal')},
+      {lbl:"Data Review Meeting",cost:7500,units:2},
+      {lbl:"Regular Safety Meeting",cost:100,units:n('periodic_saf')*4},
+    ]},
+    {name:"Investigational Product Management",items:[
+      {lbl:"Investigational Product Label Review",cost:300,units:1},
+      {lbl:"Assist Investigational Product Importation",cost:2500,units:1},
+      {lbl:"Investigational Product Supply / Resupply Management",cost:250,units:n('kz_sites')*3},
+    ]},
+    {name:"Study Close-Out Process",items:[
+      {lbl:"Clinical Study Report Submission to Kazakhstan FDA",cost:1000,units:1},
+      {lbl:"Close-Out Process (Final Deliverables, Trial Master File Transfer, Archive)",cost:10000,units:1},
+    ]},
+  ];
+  let grand=0;
+  svc.forEach(sec=>{
+    let st=0;
+    sec.items.forEach(item=>{item.total=item.cost*item.units;st+=item.total;grand+=item.total;});
+    sec.total=st;
+  });
+  return {sections:svc,grand};
+}
+
+function calcEstimate(){
+  const {grand}=buildServices();
+  const cro=n('tigermed_cost');
+  const clinRev=cro*n('markup');
+  const totRev=grand+clinRev;
+  const salaries=n('sal_charlie')+n('sal_zach')+n('sal_almas')+n('sal_didar')+n('sal_alex')+n('sal_alexander')+n('sal_shynar');
+  const tm=totalMo();
+  const opex=salaries*tm+grand*n('ciprian_pct')+n('insurance_mo')*tm+n('tech_mo')*tm+n('travel_m1')+n('legal_m1')+n('kz_ops_mo')*(n('startup_mo')+n('enroll_mo'));
+  return {grand,clinRev,totRev,ebitda:totRev-cro-opex};
+}
+
+function updateEstimate(){
+  const {grand,clinRev,totRev,ebitda}=calcEstimate();
+  document.getElementById('eMgmt').textContent=fmt(grand);
+  document.getElementById('eClin').textContent=fmt(clinRev);
+  document.getElementById('eTotal').textContent=fmt(totRev);
+  document.getElementById('eEbitda').textContent=fmt(ebitda);
+}
+
+// ── REVIEW UI ────────────────────────────────────────
+function renderReview(){
+  updateBanner();
+  const tabsEl=document.getElementById('tabs');
+  tabsEl.innerHTML='';
+  GROUPS.forEach(g=>{
+    const b=document.createElement('button');
+    b.className='tab'+(g===activeGrp?' active':'');
+    b.textContent=g;
+    b.onclick=()=>{activeGrp=g;renderFields();document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.textContent===g));};
+    tabsEl.appendChild(b);
+  });
+  renderFields();updateEstimate();
+}
+function updateBanner(){
+  document.getElementById('bStudy').textContent=A.study_name||'--';
+  document.getElementById('bSponsor').textContent=A.sponsor||'--';
+  document.getElementById('bPhase').textContent=A.phase||'--';
+  document.getElementById('bDur').textContent=(totalMo()||'--')+' months';
+  document.getElementById('bSites').textContent=(A.kz_sites||'--')+' sites';
+  if(activeFile) document.getElementById('revSub').textContent='Extracted from '+activeFile.name+' -- review and adjust';
+}
+function renderFields(){
+  const grid=document.getElementById('fieldGrid');
+  grid.innerHTML='';
+  FIELDS.filter(f=>f.grp===activeGrp).forEach(field=>{
+    const div=document.createElement('div');div.className='fi';
+    const lbl=document.createElement('label');lbl.textContent=field.lbl;
+    if(field.note){const s=document.createElement('span');s.className='fnote';s.textContent=' -- '+field.note;lbl.appendChild(s);}
+    const inp=document.createElement('input');
+    inp.type=field.t==='number'?'number':'text';
+    if(field.t==='number') inp.step=field.k.includes('pct')||field.k.includes('markup')||field.k.includes('upfront')?'0.001':'1';
+    inp.value=A[field.k]??'';
+    inp.addEventListener('input',e=>{
+      A[field.k]=field.t==='number'?(parseFloat(e.target.value)||0):e.target.value;
+      updateBanner();updateEstimate();
+    });
+    div.appendChild(lbl);div.appendChild(inp);grid.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// EXCEL GENERATION — server-side via openpyxl + real template
+// ══════════════════════════════════════════════════════
+async function generateModel(){
+  const btn = document.getElementById('dlBtn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Generating…'; }
+  try {
+    const resp = await fetch('/.netlify/functions/generate-excel', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(A)
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error || 'Server error '+resp.status);
+    }
+    const data = await resp.json();
+    // Decode base64 and trigger download
+    const binary = atob(data.file);
+    const bytes = new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    const blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fname = 'Vantage_Pricing_'+(A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)+'.xlsx';
+    a.href=url; a.download=fname; a.click();
+    URL.revokeObjectURL(url);
+    // Done screen
+    const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate();
+    ['dMgmt','dClin','dTotal','dEbitda'].forEach((id,i)=>{document.getElementById(id).textContent=fmt([g,c,t,e][i]);});
+    goTo('done');
+  } catch(err){
+    alert('Error generating Excel: '+err.message);
+    console.error(err);
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='⬇ Download Excel Model'; }
+  }
+}
+
+// UNUSED - kept for reference only
+function generateModel_OLD(){
+  const wb=XLSX.utils.book_new();
+  const today=new Date();
+  const dateStr=today.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  // Style factories
+  const F={name:"Century Gothic",sz:10};
+  const Fb={name:"Century Gothic",sz:10,bold:true};
+  const bdr={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
+  const bdrM={top:{style:"medium"},bottom:{style:"medium"},left:{style:"medium"},right:{style:"medium"}};
+  const fills={
+    black:{fgColor:{rgb:"000000"},patternType:"solid"},
+    blue: {fgColor:{rgb:"0060C4"},patternType:"solid"},
+    gray: {fgColor:{rgb:"F5F7FA"},patternType:"solid"},
+    ltbl: {fgColor:{rgb:"E8EEF7"},patternType:"solid"},
+    white:{fgColor:{rgb:"FFFFFF"},patternType:"solid"},
+    yell: {fgColor:{rgb:"FFFF00"},patternType:"solid"},
+    none: {}
+  };
+  const wt={color:{rgb:"FFFFFF"}};
+  const bt={color:{rgb:"000000"}};
+  const blt={color:{rgb:"0060C4"}};
+
+  function C(v,font,fill,align,border,numFmt){
+    return {v,t:typeof v==='number'?'n':'s',...(numFmt&&{z:numFmt}),s:{font:{...F,...font},fill:fill||fills.none,alignment:align||{},border:border||{}}};
+  }
+  const title=(v,sz)=>C(v,{...Fb,sz:sz||13,...wt},fills.black,{horizontal:'left',vertical:'center'});
+  const sHdr=(v)=>C(v,{...Fb,...wt},fills.blue,{horizontal:'left',vertical:'center'});
+  const cHdr=(v)=>C(v,{...Fb},fills.gray,{horizontal:'center',vertical:'center'},bdr);
+  const inp=(v,isN,fmt)=>C(v,{...F,...blt},fills.white,{horizontal:isN?'center':'left',vertical:'center'},bdr,fmt);
+  const yell=(v,fmt)=>C(v,F,fills.yell,{horizontal:'center',vertical:'center'},bdr,fmt);
+  const lbl=(v)=>C(v,F,fills.none,{horizontal:'left',vertical:'center'},{});
+  const nt=(v)=>C(v,{...F,sz:9},fills.gray,{horizontal:'left',vertical:'center'},{});
+  const totC=(v,fmt)=>C(v,{...Fb,...wt},fills.black,{horizontal:'center',vertical:'center'},bdrM,fmt||'$#,##0');
+  const bluTot=(v,fmt)=>C(v,{...Fb,...wt},fills.blue,{horizontal:'center',vertical:'center'},bdr,fmt||'$#,##0');
+  const wn=(v,fmt)=>C(v,F,fills.white,{horizontal:'center',vertical:'center'},bdr,fmt||'$#,##0');
+  const ln=(v,fmt)=>C(v,F,fills.ltbl,{horizontal:'center',vertical:'center'},bdr,fmt||'$#,##0');
+  const em=()=>({v:'',t:'s',s:{fill:fills.none,border:{}}});
+  const emF=(fill)=>({v:'',t:'s',s:{fill:fill||fills.none}});
+
+  const {sections,grand}=buildServices();
+  const cro=n('tigermed_cost');
+  const clinRev=cro*n('markup');
+  const totRev=grand+clinRev;
+  const tm=totalMo();
+  const salaries=n('sal_charlie')+n('sal_zach')+n('sal_almas')+n('sal_didar')+n('sal_alex')+n('sal_alexander')+n('sal_shynar');
+
+  // ════════════════════════
+  // SHEET 1: COVER
+  // ════════════════════════
+  const cov=[];
+  cov.push([title('VANTAGE CLINICAL TRIALS',32),em(),em()]);
+  for(let i=0;i<4;i++) cov.push([em(),em(),em()]);
+  cov.push([C('Trial Pricing & Financial Model',{sz:16,...blt},fills.none,{horizontal:'left'},{}),em(),em()]);
+  for(let i=0;i<2;i++) cov.push([em(),em(),em()]);
+  const covRows=[
+    ['Study / Protocol',A.study_name||''],
+    ['Sponsor',A.sponsor||''],
+    ['Phase',A.phase||''],
+    ['Indication',A.indication||''],
+    ['Estimated Start',A.est_start||''],
+    ['Prepared by','Vantage Clinical Trials'],
+    ['Date Prepared',dateStr],
+    ['Version','1.0 - Working Draft'],
+  ];
+  covRows.forEach(([k,v])=>cov.push([cHdr(k),C(v,F,fills.none,{horizontal:'left'},bdr),em()]));
+  cov.push([em(),em(),em()]);
+  cov.push([title('MODEL CONTENTS',11),em(),em()]);
+  [
+    ['Assumptions','All study inputs. Blue = editable. Yellow = key / auto-calculated formulas.'],
+    ['Sponsor Output','Clean, sponsor-ready fee schedule. No internal markup or assumptions visible.'],
+    ['Overview','One-page deal snapshot: management fee by category, clinical revenue, team salaries.'],
+    ['Management Services','Full Vantage fee schedule with all categories and quantities. Unit costs editable.'],
+    ['Clinical Costs','Per-patient procedure costs at Vantage markup. Edit quantities and unit costs.'],
+    ['Profit & Loss','Monthly Vantage-only revenue, costs, and cumulative cash position.'],
+  ].forEach(([sh,desc])=>cov.push([C(sh,{...Fb},fills.none,{horizontal:'left'},{}),C(desc,F,fills.none,{},{},{}),em()]));
+  const wsCov=XLSX.utils.aoa_to_sheet(cov);
+  wsCov['!cols']=[{wch:22},{wch:60},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,wsCov,'Cover');
+
+  // ════════════════════════
+  // SHEET 2: ASSUMPTIONS
+  // ════════════════════════
+  const asm=[];
+  const asmPush=(lbl_,val,isYellow,fmt,note_)=>{
+    asm.push([lbl(lbl_),isYellow?yell(val,fmt):inp(val,typeof val==='number',fmt),note_?nt(note_):em()]);
+  };
+  asm.push([title('VANTAGE CLINICAL TRIALS - STUDY ASSUMPTIONS',13),em(),em()]);
+  asm.push([C('  Blue cells = inputs you edit. Yellow = key assumptions / auto-calculated formulas.',{sz:9},fills.gray,{},{}),em(),em()]);
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  STUDY IDENTITY'),em(),em()]);
+  asmPush('Study Name / Protocol',A.study_name||'',false);
+  asmPush('Sponsor',A.sponsor||'',false);
+  asmPush('Phase',A.phase||'',false);
+  asmPush('Indication / Disease Area',A.indication||'',false);
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  STUDY TIMELINE'),em(),em()]);
+  asmPush('Trial Start Month (1=Jan to 12=Dec)',n('start_mo'),false,'','e.g. 4 = April');
+  asmPush('Trial Start Year',n('start_yr'),false,'','Four-digit year, e.g. 2026');
+  asmPush('Start-Up Phase (months)',n('startup_mo'),false,'','Site selection, regulatory submissions, informed consent');
+  asmPush('Enrollment / Recruitment (months)',n('enroll_mo'),false,'','Active patient recruitment window');
+  asmPush('Treatment Period (months)',n('treat_mo'),false,'','Last patient in to last patient treatment complete');
+  asmPush('Follow-Up Period (months)',n('followup_mo'),false);
+  asmPush('Close-Out Period (months)',n('closeout_mo'),false,'','Data lock, clinical study report, trial master file transfer');
+  asmPush('Total Duration (months)',tm,true,'','Auto-calculated from phases above');
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  SITES & SUBJECTS (KAZAKHSTAN)'),em(),em()]);
+  asmPush('Kazakhstan Sites Initiated',n('kz_sites'),false,'','Full Vantage-managed sites');
+  asmPush('Sites Feasibility Assessed',n('sites_feas'),false);
+  asmPush('Sites Screened',n('sites_screen'),false);
+  asmPush('Subjects Screened',n('subj_screen'),false);
+  asmPush('Subjects Enrolled',n('subj_enroll'),false);
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  REGULATORY (KAZAKHSTAN)'),em(),em()]);
+  asmPush('Ethics Committee Initial Submission',n('ec_init'),false,'','One submission for Kazakhstan');
+  asmPush('Ethics Committee Annual Reports',n('ec_annual'),false,'','One per year while trial is active');
+  asmPush('Clinical Trial Research Agreements Executed',n('ctra'),false,'','One per Kazakhstan site');
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  CLINICAL MONITORING VISITS'),em(),em()]);
+  asmPush('Interim Monitoring Visits - 1 Day',n('imv_1day'),false,'','Bi-weekly during screening & treatment');
+  asmPush('Interim Monitoring Visits - 2 Days',n('imv_2day'),false);
+  asmPush('Remote Monitoring Visits',n('rmv'),false,'','Weekly during screening & treatment');
+  asmPush('Site Initiation Visits',n('siv'),false,'','Typically = sites initiated');
+  asmPush('Site Close-Out Visits',n('cov'),false);
+  asmPush('Co-Monitoring Visits',n('co_mon'),false);
+  asmPush('Trial Master File Quality Control Visits',n('tmf_qc'),false);
+  asmPush('Serious Adverse Event Reports',n('sae'),false);
+  asmPush('Suspected Unexpected Serious Adverse Reaction Reports',n('susar'),false);
+  asmPush('Significant Issue Communications',n('sig_issues'),false);
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  PROJECT MANAGEMENT & SAFETY'),em(),em()]);
+  asmPush('Teleconferences with Sponsor (total)',n('tc_sponsor'),false);
+  asmPush('Internal Contract Research Organization Project Teleconferences',n('tc_internal'),false);
+  asmPush('Site Payments Processed',n('site_pay'),false,'','Quarterly x sites');
+  asmPush('Periodic Safety Reports',n('periodic_saf'),false);
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  FINANCIAL ASSUMPTIONS'),em(),em()]);
+  asm.push([lbl('Vantage Management Fee (from Management Services tab)'),yell(grand,'$#,##0'),nt('Auto-pulled - do not edit')]);
+  asmPush('Clinical Costs - Total (Tigermed quote)',cro,false,'$#,##0','From Budget Summary');
+  asmPush('Clinical Services Markup Multiple',n('markup'),false,'0.00','Revenue = Clinical Costs x Markup');
+  asm.push([lbl('Clinical Services Revenue (auto)'),yell(clinRev,'$#,##0'),nt('Auto-calculated')]);
+  asmPush('Clinical Revenue - Upfront % (at signing)',n('clin_upfront'),false,'0%','Portion billed at contract signing');
+  asm.push([lbl('Clinical Revenue - Spread % (over enrollment)'),yell(1-n('clin_upfront'),'0%'),nt('Remainder spread over enrollment months')]);
+  asmPush('Kazakhstan In-Country Operations Monthly Cost',n('kz_ops_mo'),false,'$#,##0','Active during startup and enrollment phases');
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  TEAM SALARIES (monthly, USD)'),em(),em()]);
+  [['Charlie',n('sal_charlie')],['Zach',n('sal_zach')],['Almas',n('sal_almas')],['Didar',n('sal_didar')],['Alex',n('sal_alex')],['Alexander',n('sal_alexander')],['Shynar',n('sal_shynar')]].forEach(([nm,sal])=>{
+    asm.push([lbl(nm+' (monthly)'),inp(sal,true,'$#,##0'),em()]);
+  });
+  asm.push([lbl('Total Monthly Salaries (auto)'),yell(salaries,'$#,##0'),nt('Auto-sum')]);
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  OPERATING EXPENSES (monthly unless noted)'),em(),em()]);
+  asmPush('Ciprian Commission Rate',n('ciprian_pct'),false,'0.000','Applied to all revenue collected each month');
+  asmPush('Insurance (monthly)',n('insurance_mo'),false,'$#,##0');
+  asmPush('Technology Stack (monthly)',n('tech_mo'),false,'$#,##0');
+  asmPush('Travel & Accommodation (Month 1 only)',n('travel_m1'),false,'$#,##0');
+  asmPush('Legal & Compliance (Month 1 only)',n('legal_m1'),false,'$#,##0');
+  asmPush('Annual Compliance Audit (fires every 12 months)',n('audit_annual'),false,'$#,##0');
+  asm.push([em(),em(),em()]);
+  asm.push([sHdr('  MANAGEMENT FEE - MILESTONE PAYMENT SCHEDULE'),em(),em()]);
+  const ms_sched=[
+    ['15% - Upon contract signing',0.15],
+    ['10% - First Ethics Committee approval',0.10],
+    ['10% - First Subject In',0.10],
+    ['10% - 25% of subjects enrolled',0.10],
+    ['10% - 50% of subjects enrolled',0.10],
+    ['10% - 75% of subjects enrolled',0.10],
+    ['10% - 100% of subjects enrolled (Last Subject In)',0.10],
+    [' 5% - 50% of subjects completed treatment',0.05],
+    [' 5% - 90% of subjects completed treatment',0.05],
+    [' 8% - Database lock',0.08],
+    [' 5% - Clinical Study Report complete',0.05],
+    [' 2% - Trial Master File transfer finalized',0.02],
+  ];
+  ms_sched.forEach(([lbl_,val])=>asm.push([lbl(lbl_),inp(val,true,'0%'),em()]));
+  asm.push([lbl('  Total (must equal 100%)'),yell(ms_sched.reduce((s,x)=>s+x[1],0),'0%'),nt('Validation - should equal 100%')]);
+
+  const wsAsm=XLSX.utils.aoa_to_sheet(asm);
+  wsAsm['!cols']=[{wch:52},{wch:20},{wch:48}];
+  XLSX.utils.book_append_sheet(wb,wsAsm,'Assumptions');
+
+  // ════════════════════════
+  // SHEET 3: SPONSOR OUTPUT
+  // ════════════════════════
+  const spo=[];
+  spo.push([title('VANTAGE CLINICAL TRIALS',22),em(),em(),em()]);
+  spo.push([C('Clinical Trial Services - Proposed Budget',{sz:14,...blt},fills.none,{horizontal:'left'},{}),em(),em(),em()]);
+  spo.push([em(),em(),em(),em()]);
+  [['Study / Protocol',A.study_name||''],['Sponsor',A.sponsor||''],['Phase',A.phase||''],['Indication',A.indication||''],['Date Prepared',dateStr]].forEach(([k,v])=>{
+    spo.push([em(),cHdr(k),C(v,F,fills.none,{horizontal:'left'},bdr),em()]);
+  });
+  spo.push([em(),em(),em(),em()]);
+  spo.push([em(),C('  Service',{...Fb,...wt},fills.black,{horizontal:'left'},bdrM),C('Amount (USD)',{...Fb,...wt},fills.black,{horizontal:'center'},bdrM),em()]);
+  spo.push([sHdr('  VANTAGE MANAGEMENT SERVICES'),emF(fills.blue),emF(fills.blue),emF(fills.blue)]);
+  const spoNames=['Project Management & Documentation','Site Startup & Regulatory','Laboratory Partner Management','Clinical Site Monitoring','Project Management','Meetings & Training','Investigational Product Management','Study Close-Out'];
+  sections.forEach((sec,i)=>{
+    const fl=i%2===0?fills.white:fills.ltbl;
+    spo.push([em(),C(spoNames[i]||sec.name,F,fl,{horizontal:'left'},bdr),C(sec.total,F,fl,{horizontal:'center'},bdr,'$#,##0'),em()]);
+  });
+  spo.push([sHdr('  Total Vantage Management Services'),emF(fills.blue),totC(grand),emF(fills.black)]);
+  spo.push([em(),em(),em(),em()]);
+  spo.push([sHdr('  CLINICAL TRIAL SERVICES'),emF(fills.blue),emF(fills.blue),emF(fills.blue)]);
+  spo.push([em(),C('Per-patient clinical procedure cost (est.)',F,fills.white,{horizontal:'left'},bdr),C('See Clinical Costs tab',F,fills.white,{horizontal:'left'},bdr),em()]);
+  spo.push([em(),C('Number of enrolled patients',F,fills.ltbl,{horizontal:'left'},bdr),C(n('subj_enroll'),F,fills.ltbl,{horizontal:'center'},bdr,'#,##0'),em()]);
+  spo.push([em(),em(),em(),em()]);
+  spo.push([sHdr('  Total Clinical Trial Services'),emF(fills.blue),totC(clinRev),emF(fills.black)]);
+  spo.push([em(),em(),em(),em()]);
+  spo.push([C('  TOTAL PROPOSED BUDGET',{...Fb,...wt},fills.black,{horizontal:'left'},bdrM),emF(fills.black),totC(totRev),emF(fills.black)]);
+  spo.push([em(),em(),em(),em()]);
+  spo.push([C('Notes: All fees are estimates based on the proposed protocol and subject population. Final budget subject to scope confirmation.',{sz:9},fills.gray,{},{}),em(),em(),em()]);
+  const wsSpO=XLSX.utils.aoa_to_sheet(spo);
+  wsSpO['!cols']=[{wch:4},{wch:52},{wch:22},{wch:8}];
+  XLSX.utils.book_append_sheet(wb,wsSpO,'Sponsor Output');
+
+  // ════════════════════════
+  // SHEET 4: OVERVIEW
+  // ════════════════════════
+  const ov=[];
+  ov.push([title('VANTAGE CLINICAL TRIALS - DEAL OVERVIEW',13),em(),em(),em(),em()]);
+  ov.push([em(),em(),em(),em(),em()]);
+  ov.push([sHdr('  VANTAGE MANAGEMENT SERVICES'),em(),em(),sHdr('  VANTAGE CLINICAL COSTS'),em()]);
+  const ovExtra=[
+    ['Per-Patient Clinical Cost (pre-markup)','See Clinical Costs tab'],
+    ['Enrolled Patients',n('subj_enroll').toLocaleString()],
+    ['Total Clinical Cost (pre-markup)',fmt(cro)],
+    ['Markup Multiple',n('markup').toFixed(2)+'x'],
+    [C('Clinical Services Revenue',{...Fb,...wt},fills.blue,{horizontal:'left'},bdr),C(clinRev,{...Fb,...wt},fills.blue,{horizontal:'center'},bdr,'$#,##0')],
+  ];
+  sections.forEach((sec,i)=>{
+    const sn=`${i+1}.  ${sec.name}`;
+    const right=ovExtra[i];
+    if(Array.isArray(right)){
+      ov.push([C(sn,F,fills.none,{horizontal:'left'},{}),C(sec.total,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),em(),right[0],right[1]]);
+    } else if(right){
+      ov.push([C(sn,F,fills.none,{horizontal:'left'},{}),C(sec.total,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),em(),C(right[0],F,fills.none,{horizontal:'left'},{}),C(right[1],F,fills.none,{horizontal:'center'},bdr)]);
+    } else {
+      ov.push([C(sn,F,fills.none,{horizontal:'left'},{}),C(sec.total,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),em(),em(),em()]);
+    }
+  });
+  ov.push([bluTot('Total Management Fee'),bluTot(grand),em(),sHdr('  COMBINED REVENUE'),em()]);
+  ov.push([em(),em(),em(),C('Total Management Fee Revenue',F,fills.none,{horizontal:'left'},{}),C(grand,F,fills.none,{horizontal:'center'},bdr,'$#,##0')]);
+  ov.push([em(),em(),em(),C('Total Clinical Services Revenue',F,fills.none,{horizontal:'left'},{}),C(clinRev,F,fills.none,{horizontal:'center'},bdr,'$#,##0')]);
+  ov.push([em(),em(),em(),bluTot('Total Vantage Revenue'),bluTot(totRev)]);
+  ov.push([em(),em(),em(),em(),em()]);
+  ov.push([sHdr('  TEAM SALARIES (monthly)'),em(),em(),em(),em()]);
+  [['Charlie',n('sal_charlie')],['Zach',n('sal_zach')],['Almas',n('sal_almas')],['Didar',n('sal_didar')],['Alex',n('sal_alex')],['Alexander',n('sal_alexander')],['Shynar',n('sal_shynar')]].forEach(([nm,sal])=>{
+    ov.push([C(nm,F,fills.none,{horizontal:'left'},{}),C(sal,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),em(),em(),em()]);
+  });
+  ov.push([bluTot('Total Monthly Salaries'),bluTot(salaries),em(),em(),em()]);
+  const wsOv=XLSX.utils.aoa_to_sheet(ov);
+  wsOv['!cols']=[{wch:46},{wch:18},{wch:4},{wch:38},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,wsOv,'Overview');
+
+  // ════════════════════════
+  // SHEET 5: MANAGEMENT SERVICES
+  // ════════════════════════
+  const msa=[];
+  msa.push([title('Vantage Management Services',13),emF(fills.black),emF(fills.black),emF(fills.black),emF(fills.black)]);
+  msa.push([cHdr('Services'),cHdr('Unit Cost (USD)'),cHdr('Unit Quantity'),cHdr('Total Cost (USD)'),cHdr('Notes')]);
+  sections.forEach(sec=>{
+    msa.push([sHdr(sec.name),emF(fills.blue),emF(fills.blue),emF(fills.blue),emF(fills.blue)]);
+    sec.items.forEach((item,ii)=>{
+      const fl=ii%2===0?fills.white:fills.ltbl;
+      msa.push([C(item.lbl,F,fl,{horizontal:'left'},bdr),C(item.cost,F,fl,{horizontal:'center'},bdr,'$#,##0'),C(item.units,F,fl,{horizontal:'center'},bdr,'#,##0'),C(item.total,F,fl,{horizontal:'center'},bdr,'$#,##0'),C('',F,fl,{},bdr)]);
+    });
+    msa.push([C('Sub-Total',{...Fb,...wt},fills.blue,{horizontal:'left'},bdr),emF(fills.blue),emF(fills.blue),C(sec.total,{...Fb,...wt},fills.blue,{horizontal:'center'},bdr,'$#,##0'),emF(fills.blue)]);
+    msa.push([em(),em(),em(),em(),em()]);
+  });
+  msa.push([totC('TOTAL VANTAGE MANAGEMENT FEE'),emF(fills.black),emF(fills.black),totC(grand),emF(fills.black)]);
+  const wsMgmt=XLSX.utils.aoa_to_sheet(msa);
+  wsMgmt['!cols']=[{wch:56},{wch:16},{wch:16},{wch:18},{wch:26}];
+  XLSX.utils.book_append_sheet(wb,wsMgmt,'Management Services');
+
+  // ════════════════════════
+  // SHEET 6: CLINICAL COSTS
+  // ════════════════════════
+  const cc=[];
+  cc.push([title('Clinical Costs - Per-Patient Cost Schedule',12),em(),em(),em(),em(),em()]);
+  cc.push([C('  Customise per protocol - edit blue quantity and unit cost cells. Yellow cells auto-calculate.',{sz:9},fills.gray,{},{}),em(),em(),em(),em(),em()]);
+  cc.push([cHdr('#'),cHdr('Clinical Activity'),cHdr('Quantity'),cHdr('Unit Cost (USD)'),cHdr('Total (USD)'),C('Vantage Revenue ('+n('markup').toFixed(2)+'x)',{...Fb},fills.gray,{horizontal:'center'},bdr)]);
+  const mk=n('markup');
+  function clinSec(sName,items){
+    cc.push([sHdr(sName),emF(fills.blue),emF(fills.blue),emF(fills.blue),emF(fills.blue),emF(fills.blue)]);
+    let st=0,sr=0;
+    items.forEach(([act,qty,uc],i)=>{
+      const fl=i%2===0?fills.white:fills.ltbl;
+      const t=qty*uc;const r=t*mk;st+=t;sr+=r;
+      cc.push([C(i+1,F,fl,{horizontal:'center'},bdr),C(act,F,fl,{horizontal:'left'},bdr),C(qty,F,fl,{horizontal:'center'},bdr),C(uc,F,fl,{horizontal:'center'},bdr,'$#,##0'),C(t,F,fl,{horizontal:'center'},bdr,'$#,##0'),C(r,F,fl,{horizontal:'center'},bdr,'$#,##0')]);
+    });
+    cc.push([em(),C('Total '+sName+':',{...Fb},fills.gray,{horizontal:'left'},bdr),em(),em(),C(st,{...Fb},fills.gray,{horizontal:'center'},bdr,'$#,##0'),C(sr,{...Fb},fills.gray,{horizontal:'center'},bdr,'$#,##0')]);
+    cc.push([em(),em(),em(),em(),em(),em()]);
+    return {st,sr};
+  }
+  const {st:scTot,sr:scRev}=clinSec('Screening',[['Recruiter compensation',1,1000],['Full physical examination',3,80],['12-Lead electrocardiogram',3,120],['Safety laboratory panel (hematology + biochemistry)',3,180],['Coagulation panel',3,90],['Serology (hepatitis B, C, HIV)',3,120],['Urinalysis',3,25],['Urine drug screen',3,40],['Alcohol breath test',3,15]]);
+  const {st:trTot,sr:trRev}=clinSec('Treatment / Inpatient Period',[['Physician visit / consultation',6,80],['Vital signs assessment',12,15],['Hematology + biochemistry panel',12,150],['12-Lead electrocardiogram',6,120],['Urinalysis',6,25],['Pharmacokinetic blood sampling + processing',12,35],['Pharmacokinetic bioanalysis (LC-MS/MS)',12,60],['Patient compensation',1,1500]]);
+  const {st:fuTot,sr:fuRev}=clinSec('Follow-Up',[['Physician visit',1,80],['Safety laboratory panel',1,150],['Patient compensation (follow-up)',1,200]]);
+  const subTot=scTot+trTot+fuTot;
+  const cont=subTot*0.25;
+  const perPat=subTot+cont;
+  const piCost=n('kz_sites')*2000;
+  const totClinCost=perPat*n('subj_enroll')+piCost;
+  const totClinRev=totClinCost*mk;
+  cc.push([em(),C('Contingency (+25%):',{...Fb},fills.none,{horizontal:'left'},{}),em(),em(),C(cont,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),C(cont*mk,F,fills.none,{horizontal:'center'},bdr,'$#,##0')]);
+  cc.push([em(),totC('TOTAL PER PATIENT:'),emF(fills.black),emF(fills.black),totC(perPat),totC(perPat*mk)]);
+  cc.push([em(),em(),em(),em(),em(),em()]);
+  cc.push([sHdr('  SITE / PRINCIPAL INVESTIGATOR COSTS'),emF(fills.blue),emF(fills.blue),emF(fills.blue),emF(fills.blue),emF(fills.blue)]);
+  cc.push([em(),C('Principal Investigator / Sub-Investigator Fee (per Kazakhstan site)',F,fills.white,{horizontal:'left'},bdr),C(n('kz_sites'),F,fills.white,{horizontal:'center'},bdr),C(2000,F,fills.white,{horizontal:'center'},bdr,'$#,##0'),C(piCost,F,fills.white,{horizontal:'center'},bdr,'$#,##0'),C(piCost*mk,F,fills.white,{horizontal:'center'},bdr,'$#,##0')]);
+  cc.push([sHdr('Total - All Enrolled Patients'),emF(fills.blue),emF(fills.blue),emF(fills.blue),C(totClinCost,{...Fb,...wt},fills.blue,{horizontal:'center'},bdr,'$#,##0'),C(totClinRev,{...Fb,...wt},fills.blue,{horizontal:'center'},bdr,'$#,##0')]);
+  const wsCc=XLSX.utils.aoa_to_sheet(cc);
+  wsCc['!cols']=[{wch:5},{wch:56},{wch:12},{wch:16},{wch:16},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,wsCc,'Clinical Costs');
+
+  // ════════════════════════
+  // SHEET 7: PROFIT & LOSS
+  // ════════════════════════
+  const numM=Math.max(tm,1);
+  const sMo=n('start_mo');const sYr=n('start_yr');
+  const moNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function moLbl(off){const mo=((sMo-1+off)%12);const yr=sYr+Math.floor((sMo-1+off)/12);return moNames[mo]+'-'+yr;}
+
+  // Monthly arrays
+  const ms_offsets=[0,n('startup_mo'),n('startup_mo')+1,n('startup_mo')+Math.round(n('enroll_mo')*0.25),n('startup_mo')+Math.round(n('enroll_mo')*0.5),n('startup_mo')+Math.round(n('enroll_mo')*0.75),n('startup_mo')+n('enroll_mo'),n('startup_mo')+n('enroll_mo')+Math.round(n('treat_mo')*0.5),n('startup_mo')+n('enroll_mo')+Math.round(n('treat_mo')*0.9),n('startup_mo')+n('enroll_mo')+n('treat_mo'),n('startup_mo')+n('enroll_mo')+n('treat_mo')+1,n('startup_mo')+n('enroll_mo')+n('treat_mo')+n('followup_mo')];
+  const ms_pcts=[0.15,0.10,0.10,0.10,0.10,0.10,0.10,0.05,0.05,0.08,0.05,0.02];
+  const mgmt_a=Array(numM).fill(0);
+  ms_offsets.forEach((off,i)=>{const idx=Math.min(Math.max(off,0),numM-1);mgmt_a[idx]=(mgmt_a[idx]||0)+grand*ms_pcts[i];});
+  const cSpread=Math.max(n('enroll_mo'),1);const cStart=n('startup_mo');
+  const clin_a=Array(numM).fill(0).map((_,i)=>{if(i===0)return clinRev*n('clin_upfront');if(i>=cStart&&i<cStart+cSpread)return(clinRev*(1-n('clin_upfront')))/cSpread;return 0;});
+  const rev_a=Array(numM).fill(0).map((_,i)=>mgmt_a[i]+clin_a[i]);
+  const cro_a=Array(numM).fill(0).map((_,i)=>{if(i===0)return cro*n('clin_upfront');if(i>=cStart&&i<cStart+cSpread)return(cro*(1-n('clin_upfront')))/cSpread;return 0;});
+  const sal_a=Array(numM).fill(salaries);
+  const cip_a=rev_a.map(v=>v*n('ciprian_pct'));
+  const kzS=n('startup_mo');const kzE=kzS+n('enroll_mo');
+  const kzops_a=Array(numM).fill(0).map((_,i)=>(i>=kzS&&i<kzE)?n('kz_ops_mo'):0);
+  const ins_a=Array(numM).fill(n('insurance_mo'));
+  const tech_a=Array(numM).fill(n('tech_mo'));
+  const tr_a=Array(numM).fill(0).map((_,i)=>i===0?n('travel_m1'):0);
+  const lg_a=Array(numM).fill(0).map((_,i)=>i===0?n('legal_m1'):0);
+  const aud_a=Array(numM).fill(0).map((_,i)=>(i>0&&(i+1)%12===0)?n('audit_annual'):0);
+  const costs_a=Array(numM).fill(0).map((_,i)=>sal_a[i]+cip_a[i]+cro_a[i]+ins_a[i]+tech_a[i]+tr_a[i]+lg_a[i]+kzops_a[i]+aud_a[i]);
+  const ebitda_a=Array(numM).fill(0).map((_,i)=>rev_a[i]-costs_a[i]);
+  let cum=0;
+  const cash_a=ebitda_a.map(v=>{cum+=v;return cum;});
+
+  const pGH=(v)=>C(v,{...Fb,...wt,sz:9},fills.gray,{horizontal:'center'},bdr);
+  const pSec=(v)=>({v:'  '+v,t:'s',s:{font:{...Fb,...wt},fill:fills.blue,alignment:{horizontal:'left'},border:{}}});
+  const pLbl=(v,bold)=>C(v,bold?{...Fb}:F,fills.none,{horizontal:'left'},bdr);
+  const pN=(v)=>v!==0?C(v,{sz:9},fills.white,{horizontal:'center'},bdr,'$#,##0'):C(0,{sz:9,color:{rgb:'CCCCCC'}},fills.white,{horizontal:'center'},bdr,'$#,##0');
+  const pT=(v)=>C(v,{...Fb,...wt,sz:10},fills.black,{horizontal:'center'},bdrM,'$#,##0');
+  const pSum=(v)=>C(v,{...Fb},fills.gray,{horizontal:'center'},bdr,'$#,##0');
+  function plRow(sec,lbl_,vals,isTotal){
+    const r=[em(),isTotal?pLbl(lbl_,true):pLbl(sec),isTotal?em():pLbl(lbl_)];
+    vals.forEach(v=>r.push(pN(v)));
+    r.push(isTotal?pT(vals.reduce((a,b)=>a+b,0)):pSum(vals.reduce((a,b)=>a+b,0)));
+    return r;
+  }
+  function plSec(label){const r=[pSec(label)];for(let i=0;i<numM+2;i++)r.push(emF(fills.blue));return r;}
+  function timeRow(lbl_,chk){const r=[em(),pLbl(lbl_,true),em()];for(let m=0;m<numM;m++)r.push(chk(m)?C(lbl_,{sz:9,bold:true},fills.ltbl,{horizontal:'center'},bdr):C('',{sz:9},fills.white,{horizontal:'center'},bdr));r.push(em());return r;}
+  function msRow(lbl_,chk){const r=[em(),pLbl(lbl_),em()];for(let m=0;m<numM;m++)r.push(chk(m)?C('◆',{sz:10,bold:true,...blt},fills.ltbl,{horizontal:'center'},bdr):C('',{sz:9},fills.white,{horizontal:'center'},bdr));r.push(em());return r;}
+
+  const pl=[];
+  const tR=[title('VANTAGE CLINICAL TRIALS - PROFIT & LOSS',13)];
+  for(let i=0;i<numM+2;i++) tR.push(emF(fills.black));
+  pl.push(tR);
+  const hR=[em(),pGH('Section'),pGH('Line Item')];
+  for(let m=0;m<numM;m++) hR.push(pGH(moLbl(m)));
+  hR.push(C('TOTAL',{...Fb,...wt,sz:10},fills.black,{horizontal:'center'},{}));
+  pl.push(hR);
+  pl.push(plSec('REVENUE'));
+  pl.push(plRow('Revenue','Vantage Management Fee (milestone payments)',mgmt_a));
+  pl.push(plRow('Revenue','Clinical Services Revenue (upfront + spread over enrollment)',clin_a));
+  pl.push(plRow('','TOTAL REVENUE',rev_a,true));
+  pl.push(plSec('DIRECT COSTS'));
+  pl.push(plRow('Direct Costs','Team Salaries (all team members)',sal_a));
+  pl.push(plRow('Direct Costs','Ciprian Commission',cip_a));
+  pl.push(plRow('Direct Costs','Kazakhstan Clinical Trial Costs (Tigermed)',cro_a));
+  pl.push(plSec('OPERATING EXPENSES'));
+  pl.push(plRow('Operating Expenses','Insurance',ins_a));
+  pl.push(plRow('Operating Expenses','Technology Stack',tech_a));
+  pl.push(plRow('Operating Expenses','Travel & Accommodation (Month 1)',tr_a));
+  pl.push(plRow('Operating Expenses','Legal & Compliance (Month 1)',lg_a));
+  pl.push(plRow('Operating Expenses','Kazakhstan In-Country Operations',kzops_a));
+  pl.push(plRow('Operating Expenses','Annual Compliance Audit',aud_a));
+  pl.push(plRow('','TOTAL COSTS',costs_a,true));
+  pl.push(plRow('','Total Revenue (ref)',rev_a));
+  pl.push(plRow('','CASH POSITION (Cumulative)',cash_a));
+  pl.push([em()]);
+  pl.push([C('  STUDY TIMELINE',{...Fb,color:{rgb:'A0A0A0'}},fills.none,{horizontal:'left'},{}), ...Array(numM+2).fill(em())]);
+  const sUp=n('startup_mo');const enr=n('enroll_mo');const tr2=n('treat_mo');const fu=n('followup_mo');
+  pl.push(timeRow('Start-Up',m=>m>=0&&m<sUp));
+  pl.push(timeRow('Enrollment / Recruitment',m=>m>=sUp&&m<sUp+enr));
+  pl.push(timeRow('Treatment',m=>m>=sUp+enr&&m<sUp+enr+tr2));
+  pl.push(timeRow('Follow-Up',m=>m>=sUp+enr+tr2&&m<sUp+enr+tr2+fu));
+  pl.push(timeRow('Close-Out',m=>m>=sUp+enr+tr2+fu&&m<numM));
+  pl.push([em()]);
+  pl.push([C('  KEY MILESTONES (= milestone payment trigger)',{...Fb,color:{rgb:'888888'}},fills.none,{horizontal:'left'},{}), ...Array(numM+2).fill(em())]);
+  const msDefs=[
+    ['15% - Contract Signed',m=>m===0],
+    ['10% - First Ethics Committee Approval',m=>m===sUp],
+    ['10% - First Subject In',m=>m===sUp+1],
+    ['10% - 25% Enrolled',m=>m===sUp+Math.round(enr*0.25)],
+    ['10% - 50% Enrolled',m=>m===sUp+Math.round(enr*0.5)],
+    ['10% - 75% Enrolled',m=>m===sUp+Math.round(enr*0.75)],
+    ['10% - Last Subject In (100% Enrolled)',m=>m===sUp+enr],
+    [' 5% - 50% of Subjects Completed Treatment',m=>m===sUp+enr+Math.round(tr2*0.5)],
+    [' 5% - 90% of Subjects Completed Treatment',m=>m===sUp+enr+Math.round(tr2*0.9)],
+    [' 8% - Database Lock',m=>m===sUp+enr+tr2],
+    [' 5% - Clinical Study Report Submitted',m=>m===sUp+enr+tr2+1],
+    [' 2% - Trial Master File Transfer Finalized',m=>m===numM-1],
+  ];
+  msDefs.forEach(([lbl_,chk])=>pl.push(msRow(lbl_,chk)));
+  const wsPL=XLSX.utils.aoa_to_sheet(pl);
+  const plCols=[{wch:4},{wch:18},{wch:44}];
+  for(let m=0;m<numM;m++) plCols.push({wch:9});
+  plCols.push({wch:14});
+  wsPL['!cols']=plCols;
+  XLSX.utils.book_append_sheet(wb,wsPL,'Profit & Loss');
+
+  // ── DOWNLOAD ──
+  const fname='Vantage_Pricing_'+(A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,30)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+
+  // Done screen
+  const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate();
+  ['dMgmt','dClin','dTotal','dEbitda'].forEach((id,i)=>{document.getElementById(id).textContent=fmt([g,c,t,e][i]);});
+  goTo('done');
+} // end generateModel_OLD
+</script>
+</body>
+</html>

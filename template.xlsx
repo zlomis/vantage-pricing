@@ -1,0 +1,118 @@
+import os, base64, json, tempfile
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+import openpyxl
+import anthropic
+
+app = Flask(__name__, static_folder='public', static_url_path='')
+CORS(app)
+
+# Load template once at startup
+TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), 'template.xlsx')
+
+def inject_assumptions(assumptions: dict) -> bytes:
+    wb = openpyxl.load_workbook(TEMPLATE_PATH)
+    ws = wb['Assumptions']
+
+    def s(ref, key):
+        v = assumptions.get(key)
+        if v is None or v == '': return
+        cell = ws[ref]
+        try:
+            cell.value = float(v) if '.' in str(v) else int(v)
+        except (ValueError, TypeError):
+            cell.value = str(v)
+
+    def st(ref, key):
+        v = assumptions.get(key)
+        if v is None or v == '': return
+        ws[ref].value = str(v)
+
+    # Study Identity
+    st('B5', 'study_name'); st('B6', 'sponsor')
+    st('B7', 'phase');      st('B8', 'indication')
+    # Timeline
+    s('B11','start_mo');   s('B12','start_yr')
+    s('B13','startup_mo'); s('B14','enroll_mo')
+    s('B15','treat_mo');   s('B16','followup_mo'); s('B17','closeout_mo')
+    # Sites & Subjects
+    s('B21','kz_sites');   s('B22','sites_feas');  s('B23','sites_screen')
+    s('B24','subj_screen');s('B25','subj_enroll')
+    # Regulatory
+    s('B28','ec_init');    s('B29','ec_annual');   s('B30','ctra')
+    # Monitoring
+    s('B33','imv_1day');   s('B34','imv_2day');    s('B35','rmv')
+    s('B36','siv');        s('B37','cov');          s('B38','co_mon')
+    s('B39','tmf_qc');     s('B40','sae');          s('B41','susar'); s('B42','sig_issues')
+    # PM & Safety
+    s('B45','tc_sponsor'); s('B46','tc_internal')
+    s('B47','site_pay');   s('B48','periodic_saf')
+    # Financial
+    s('B53','markup');     s('B55','clin_upfront'); s('B57','kz_ops_mo')
+    # Team Salaries
+    s('B60','sal_charlie');s('B61','sal_zach');     s('B62','sal_almas')
+    s('B63','sal_didar');  s('B64','sal_alex')
+    s('B65','sal_alexander');s('B66','sal_shynar')
+    # OpEx
+    s('B70','ciprian_pct');s('B71','insurance_mo'); s('B72','tech_mo')
+    s('B73','travel_m1');  s('B74','legal_m1');     s('B75','audit_annual')
+
+    with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+        wb.save(tmp.name)
+        with open(tmp.name, 'rb') as f:
+            data = f.read()
+    os.unlink(tmp.name)
+    return data
+
+
+@app.route('/')
+def index():
+    return send_from_directory('public', 'index.html')
+
+
+@app.route('/api/generate', methods=['POST', 'OPTIONS'])
+def generate():
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        assumptions = request.get_json()
+        xlsx_bytes = inject_assumptions(assumptions)
+        return jsonify({'file': base64.b64encode(xlsx_bytes).decode()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/claude', methods=['POST', 'OPTIONS'])
+def claude_proxy():
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'ANTHROPIC_API_KEY not set'}), 500
+
+        body = request.get_json()
+        client = anthropic.Anthropic(api_key=api_key)
+        
+        # Convert messages format for SDK
+        messages = body.get('messages', [])
+        system = body.get('system', '')
+        
+        response = client.messages.create(
+            model=body.get('model', 'claude-sonnet-4-20250514'),
+            max_tokens=body.get('max_tokens', 2000),
+            system=system,
+            messages=messages
+        )
+        
+        # Return in same format as direct API
+        return jsonify({
+            'content': [{'type': 'text', 'text': response.content[0].text}]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
