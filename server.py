@@ -1,5 +1,0 @@
-flask==3.0.3
-flask-cors==4.0.1
-openpyxl==3.1.2
-anthropic==0.40.0
-gunicorn==22.0.0

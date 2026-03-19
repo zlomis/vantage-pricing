@@ -1,3 +1,5 @@
+<!-- vantage-v31-nonce-334672 -->
+<!-- Vantage Pricing Engine v12b - 2026-03-11 03:59:54 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -211,45 +213,46 @@ const FIELDS = [
   {k:"est_start",     lbl:"Estimated Start",                            grp:"Study Identity",   t:"text",   def:"Q2 2026"},
   {k:"start_mo",      lbl:"Trial Start Month (1=Jan 12=Dec)",           grp:"Timeline",         t:"number", def:4,      note:"e.g. 4 = April"},
   {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", def:2026,   note:"Four-digit year"},
-  {k:"startup_mo",    lbl:"Start-Up Phase (months)",                    grp:"Timeline",         t:"number", def:5,      note:"Site selection, regulatory submissions"},
+  {k:"startup_mo",    lbl:"Start-Up Phase (months)",                    grp:"Timeline",         t:"number", def:4,      note:"Site selection, regulatory submissions"},
   {k:"enroll_mo",     lbl:"Enrollment / Recruitment (months)",          grp:"Timeline",         t:"number", def:8,      note:"Active patient recruitment window"},
   {k:"treat_mo",      lbl:"Treatment Period (months)",                  grp:"Timeline",         t:"number", def:4,      note:"Last patient in to last patient treatment complete"},
   {k:"followup_mo",   lbl:"Follow-Up Period (months)",                  grp:"Timeline",         t:"number", def:1},
   {k:"closeout_mo",   lbl:"Close-Out Period (months)",                  grp:"Timeline",         t:"number", def:2,      note:"Data lock, CSR, TMF transfer"},
-  {k:"kz_sites",      lbl:"Kazakhstan Sites Initiated",                 grp:"Sites & Subjects", t:"number", def:10,     note:"Full Vantage-managed sites"},
+  {k:"kz_sites",      lbl:"Kazakhstan Sites Initiated",                 grp:"Sites & Subjects", t:"number", def:null,   note:"Full Vantage-managed sites"},
   {k:"sites_feas",    lbl:"Sites Feasibility Assessed",                 grp:"Sites & Subjects", t:"number", def:15},
   {k:"sites_screen",  lbl:"Sites Screened",                             grp:"Sites & Subjects", t:"number", def:12},
   {k:"subj_screen",   lbl:"Subjects Screened",                          grp:"Sites & Subjects", t:"number", def:135},
   {k:"subj_enroll",   lbl:"Subjects Enrolled",                          grp:"Sites & Subjects", t:"number", def:108},
   {k:"ec_init",       lbl:"Ethics Committee Initial Submissions",       grp:"Regulatory",       t:"number", def:1,      note:"One submission for Kazakhstan"},
   {k:"ec_annual",     lbl:"Ethics Committee Annual Reports",            grp:"Regulatory",       t:"number", def:2,      note:"One per year while trial is active"},
-  {k:"ctra",          lbl:"CTRAs Executed",                             grp:"Regulatory",       t:"number", def:10,     note:"One per Kazakhstan site"},
-  {k:"imv_1day",      lbl:"Interim Monitoring Visits 1 Day",            grp:"Monitoring",       t:"number", def:165,    note:"Bi-weekly during screening & treatment"},
-  {k:"imv_2day",      lbl:"Interim Monitoring Visits 2 Days",           grp:"Monitoring",       t:"number", def:60},
-  {k:"rmv",           lbl:"Remote Monitoring Visits",                   grp:"Monitoring",       t:"number", def:205,    note:"Weekly during screening & treatment"},
-  {k:"siv",           lbl:"Site Initiation Visits",                     grp:"Monitoring",       t:"number", def:10,     note:"= sites initiated"},
-  {k:"cov",           lbl:"Site Close-Out Visits",                      grp:"Monitoring",       t:"number", def:10},
-  {k:"co_mon",        lbl:"Co-Monitoring Visits",                       grp:"Monitoring",       t:"number", def:10},
-  {k:"tmf_qc",        lbl:"TMF QC Visits",                              grp:"Monitoring",       t:"number", def:3},
-  {k:"sae",           lbl:"SAE Reports",                                grp:"Monitoring",       t:"number", def:10},
-  {k:"susar",         lbl:"SUSAR Reports",                              grp:"Monitoring",       t:"number", def:5},
-  {k:"sig_issues",    lbl:"Significant Issue Communications",           grp:"Monitoring",       t:"number", def:5},
-  {k:"tc_sponsor",    lbl:"Teleconferences with Sponsor",               grp:"PM & Safety",      t:"number", def:20},
-  {k:"tc_internal",   lbl:"Internal CRO Project TCs",                   grp:"PM & Safety",      t:"number", def:20},
-  {k:"site_pay",      lbl:"Site Payments Processed",                    grp:"PM & Safety",      t:"number", def:40,     note:"Quarterly x sites"},
-  {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number", def:2},
+  {k:"ctra",          lbl:"CTRAs Executed",                             grp:"Regulatory",       t:"number", def:null,   note:"One per Kazakhstan site"},
+  {k:"imv_1day",      lbl:"Interim Monitoring Visit - 1 Day",            grp:"Monitoring",       t:"number", def:null,   note:"Computed from phase/sites/timeline"},
+  {k:"imv_2day",      lbl:"Interim Monitoring Visits 2 Days",           grp:"Monitoring",       t:"number", def:null},
+  {k:"rmv",           lbl:"Remote Monitoring Visits",                   grp:"Monitoring",       t:"number", def:null,   note:"Computed from phase/sites/timeline"},
+  {k:"siv",           lbl:"Site Initiation Visits",                     grp:"Monitoring",       t:"number", def:null,   note:"= sites initiated"},
+  {k:"cov",           lbl:"Site Close-Out Visits",                      grp:"Monitoring",       t:"number", def:null},
+  {k:"co_mon",        lbl:"Co-Monitoring Visits",                       grp:"Monitoring",       t:"number", def:null},
+  {k:"tmf_qc",        lbl:"TMF QC Visits",                              grp:"Monitoring",       t:"number", def:null},
+  {k:"sae",           lbl:"SAE Reports",                                grp:"Monitoring",       t:"number", def:null},
+  {k:"susar",         lbl:"SUSAR Reports",                              grp:"Monitoring",       t:"number", def:null},
+  {k:"sig_issues",    lbl:"Significant Issue Communications",           grp:"Monitoring",       t:"number", def:null},
+  {k:"tc_sponsor",    lbl:"Teleconferences with Sponsor",               grp:"PM & Safety",      t:"number", def:null},
+  {k:"tc_internal",   lbl:"Internal CRO Project TCs",                   grp:"PM & Safety",      t:"number", def:null},
+  {k:"site_pay",      lbl:"Site Payments Processed",                    grp:"PM & Safety",      t:"number", def:null,   note:"Quarterly x sites"},
+  {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number", def:null},
   {k:"tigermed_cost", lbl:"Tigermed CRO Quote (USD)",                   grp:"Financial",        t:"number", def:4134072, note:"From Budget Summary page"},
   {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", def:1.45,   note:"Revenue = Tigermed x Markup, e.g. 1.45"},
-  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.2,    note:"Portion billed at contract signing"},
+  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.1,    note:"Portion billed at contract signing"},
   {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", def:2500,   note:"Active during startup and enrollment"},
-  {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number", def:7050},
-  {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number", def:7050},
-  {k:"sal_almas",     lbl:"Almas salary monthly USD",                   grp:"Team Salaries",    t:"number", def:7050},
-  {k:"sal_didar",     lbl:"Didar salary monthly USD",                   grp:"Team Salaries",    t:"number", def:1500},
-  {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number", def:7050},
+  {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number", def:4000},
+  {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number", def:4000},
+  {k:"sal_almas",     lbl:"Almas salary monthly USD",                   grp:"Team Salaries",    t:"number", def:4000},
+  {k:"sal_didar",     lbl:"Didar salary monthly USD",                   grp:"Team Salaries",    t:"number", def:1000},
+  {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number", def:4000},
   {k:"sal_alexander", lbl:"Alexander salary monthly USD",               grp:"Team Salaries",    t:"number", def:1000},
   {k:"sal_shynar",    lbl:"Shynar salary monthly USD",                  grp:"Team Salaries",    t:"number", def:1000},
-  {k:"ciprian_pct",   lbl:"Ciprian Commission Rate",                    grp:"OpEx",             t:"number", def:0.005,  note:"Applied to all revenue each month"},
+  {k:"referral_pct",  lbl:"Referral Partner Commission Rate",            grp:"OpEx",             t:"number", def:0,      note:"Applied to all revenue each month — 0 if no referral partner"},
+  {k:"referral_name", lbl:"Referral Partner Name",                       grp:"OpEx",             t:"text",   def:"—"},
   {k:"insurance_mo",  lbl:"Insurance monthly USD",                      grp:"OpEx",             t:"number", def:200},
   {k:"tech_mo",       lbl:"Technology Stack monthly USD",               grp:"OpEx",             t:"number", def:500},
   {k:"travel_m1",     lbl:"Travel and Accommodation Month 1",           grp:"OpEx",             t:"number", def:1000},
@@ -263,6 +266,74 @@ let activeFile = null;
 let activeGrp = GROUPS[0];
 
 FIELDS.forEach(f=>{ A[f.k]=f.def; });
+// ── DERIVED DEFAULTS (Tigermed methodology) ───────────────────────
+function computeDerivedDefaults() {
+  // Derive kz_sites from phase if not explicitly extracted
+  if (!A.kz_sites) {
+    const is3 = /phase\s*3|phase\s*iii/i.test(A.phase||'');
+    const is2 = /phase\s*2|phase\s*ii(?!i)/i.test(A.phase||'');
+    A.kz_sites = is3 ? 10 : is2 ? 5 : 3; // Phase 1/1b = 3, Phase 2 = 5, Phase 3 = 10
+  }
+  const sites   = Number(A.kz_sites);
+  const enroll  = Number(A.enroll_mo)   || 8;
+  const treat   = Number(A.treat_mo)    || 4;
+  const followup= Number(A.followup_mo) || 1;
+  const closeout= Number(A.closeout_mo) || 2;
+  const startup = Number(A.startup_mo)  || 4;
+  const total   = startup + enroll + treat + followup + closeout;
+  const subj    = Number(A.subj_enroll) || 30;
+  const ind     = String(A.indication||'').toLowerCase();
+
+  function setIfNull(k, val) {
+    if (A[k] === null || A[k] === undefined || A[k] === 0) {
+      A[k] = Math.max(0, Math.round(val));
+    }
+  }
+
+  const is3 = /phase\s*3|phase\s*iii/i.test(A.phase||'');
+  const is2 = /phase\s*2|phase\s*ii(?!i)/i.test(A.phase||'');
+
+  if (is3) {
+    setIfNull('imv_1day', sites * enroll * 0.5 + sites * followup / 6);
+    setIfNull('imv_2day', 0);
+    setIfNull('rmv',      sites * enroll * 0.5 + sites * followup / 6);
+  } else if (is2) {
+    setIfNull('imv_1day', sites * enroll * 0.75 + sites * treat * 0.5);
+    setIfNull('imv_2day', sites * enroll * 0.25);
+    setIfNull('rmv',      sites * (enroll + treat + followup) * 0.5);
+  } else {
+    // Phase 1/1b default (monthly during enrollment & follow-up, bi-monthly treatment)
+    setIfNull('imv_1day', sites * (enroll + followup) * 1.0 + sites * treat * 0.5);
+    setIfNull('imv_2day', 0);
+    setIfNull('rmv',      sites * (enroll + followup) * 1.0 + sites * treat * 0.5);
+  }
+  setIfNull('siv',    sites);
+  setIfNull('cov',    sites);
+  setIfNull('co_mon', sites);
+  setIfNull('tmf_qc', Math.max(1, Math.round(total / 6)));
+
+  const isOnco  = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
+  const isCardio= /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
+  const saeRate  = isOnco ? 0.30 : isCardio ? 0.05 : 0.10;
+  const susarRate= isOnco ? 0.10 : isCardio ? 0.05 : 0.05;
+  setIfNull('sae',       Math.ceil(subj * saeRate * 3));
+  setIfNull('susar',     Math.ceil(subj * susarRate * 3));
+  setIfNull('sig_issues',Math.max(3, Math.round(sites * 0.5)));
+
+  setIfNull('tc_sponsor',  Math.round((startup + enroll) * 2 + (treat + followup + closeout) * 1));
+  setIfNull('tc_internal', Math.round(((startup + enroll) * 2 + (treat + followup + closeout) * 1) * 2));
+  setIfNull('site_pay',    sites * Math.ceil(total / 3));
+  setIfNull('periodic_saf',Math.max(1, Math.ceil(total / 12)));
+
+  // Always recompute these — not extracted, always derived from kz_sites + timeline
+  A.sites_feas   = sites * 2;
+  A.sites_screen = Math.round(sites * 1.5);
+  A.ctra         = sites;
+  A.ec_annual    = Math.max(1, Math.ceil(total / 12));
+  // subj_screen: always computed from enrolled (3x ratio) — never extracted from synopsis
+  A.subj_screen = Math.round(subj * 3.0);
+}
+computeDerivedDefaults(); // run once at startup with FIELDS defaults
 
 // ── NAVIGATION ──────────────────────────────────────
 const STAGES=['upload','extracting','review','done'];
@@ -279,6 +350,7 @@ function goTo(name){
 }
 function resetApp(){
   A={};FIELDS.forEach(f=>{A[f.k]=f.def;});
+  computeDerivedDefaults();
   activeFile=null;activeGrp=GROUPS[0];
   document.getElementById('fi').value='';
   document.getElementById('uploadErr').classList.add('hidden');
@@ -345,6 +417,10 @@ async function handleFile(f){
         A[field.k]=ex[field.k];
       }
     });
+    // Reset derived fields so they recompute fresh from extracted kz_sites/enroll_mo etc.
+    ['imv_1day','imv_2day','rmv','siv','cov','co_mon','tmf_qc',
+     'sae','susar','sig_issues','tc_sponsor','tc_internal','site_pay','periodic_saf'].forEach(k=>{A[k]=null;});
+    computeDerivedDefaults();
     goTo('review');
 
   } catch(e){
@@ -355,24 +431,64 @@ async function handleFile(f){
 
 // ── CLAUDE API ───────────────────────────────────────
 async function extractFromSynopsis(fileContent,fileType){
-  const sys=`You are a clinical trial financial analyst at Vantage Clinical Trials (Kazakhstan CRO).
-Extract assumption values from a clinical trial synopsis or CRO proposal.
-Return ONLY valid JSON with these keys (use null for anything not found, never guess):
-study_name, sponsor, phase, indication, est_start,
-start_mo (1-12), start_yr (e.g. 2026),
-startup_mo, enroll_mo, treat_mo, followup_mo, closeout_mo,
-kz_sites, sites_feas, sites_screen, subj_screen, subj_enroll,
-ec_init (ethics committee initial submissions - typically 1 for KZ),
-ec_annual, ctra (= kz_sites),
-imv_1day, imv_2day, rmv, siv (=kz_sites), cov (=kz_sites), co_mon, tmf_qc,
-sae, susar, sig_issues,
-tc_sponsor, tc_internal, site_pay (quarterly x sites), periodic_saf,
-tigermed_cost (Tigermed Professional Service Fee USD - KEY input),
-markup (default 1.45), clin_upfront (default 0.2), kz_ops_mo (default 2500),
-sal_charlie, sal_zach, sal_almas, sal_didar, sal_alex, sal_alexander, sal_shynar (leave null),
-ciprian_pct (default 0.005), insurance_mo (default 200), tech_mo (default 500),
-travel_m1 (default 1000), legal_m1 (default 1000), audit_annual (default 3000)
-Return JSON only. No prose, no markdown.`;
+  const sysLines=[
+    'You are a clinical trial financial analyst at Vantage Clinical Trials, a Kazakhstan-based CRO.',
+    'Your job is to extract assumption values from a clinical trial synopsis or CRO proposal.',
+    'Return ONLY valid JSON with the keys listed below. Use null for anything you cannot determine.',
+    '',
+    '=== EXTRACT ONLY THESE FIELDS ===',
+    '',
+    'IDENTITY:',
+    '- study_name: full protocol/study title',
+    '- sponsor: sponsoring company name',
+    '- phase: standardized phase string, e.g. "Phase 1b", "Phase 2", "Phase 3"',
+    '  (interpret "dose escalation" = Phase 1/1b; "dose expansion" = Phase 2; "pivotal" = Phase 3)',
+    '  CRITICAL: bioequivalence, crossover, BE study, two-treatment two-period = "Phase 1"',
+    '- indication: disease or condition being studied',
+    '',
+    'START DATE (be conservative - only extract if explicitly planned, not the document date):',
+    '- start_mo (1-12): planned trial start month. ONLY if a future date is explicitly stated.',
+    '- start_yr: planned trial start year (4 digits). Same rule.',
+    '',
+    'TIMELINE (in months - extract if stated, else return null):',
+    '- startup_mo: site activation / startup duration in months. Return null if not explicitly stated.',
+    '- enroll_mo: enrollment / recruitment duration in months.',
+    '  CRITICAL: Return null unless the synopsis explicitly states an enrollment period (e.g. "X-month enrollment period").',
+    '  Do NOT infer from dosing schedules, cohort sizes, or treatment cycles.',
+    '- treat_mo: treatment phase duration in months. Return null if not explicitly stated.',
+    '  NOTE: per-patient treatment duration (e.g. "6 cycles of treatment") is NOT the same as total treatment phase duration.',
+    '- followup_mo: follow-up period in months. Return null if not explicitly stated.',
+    '- closeout_mo: close-out duration in months. Return null if not explicitly stated.',
+    '',
+    'SITES & SUBJECTS:',
+    '- kz_sites: Kazakhstan sites Vantage will manage. Sponsors specify patient counts not sites — almost never stated in a synopsis.',
+    '  Only extract if the synopsis explicitly states KZ/Vantage-specific site count. Do NOT infer from global site counts (e.g. "50 sites worldwide" is irrelevant).',
+    '  Return null in virtually all cases.',
+    '- subj_enroll: total subjects to be enrolled. If the study has multiple parts (e.g. Part 1 safety lead-in, Part 2 randomized), extract ONLY the primary/largest enrolled cohort (e.g. Part 2 number). Do NOT sum parts. Return null if ambiguous.',
+    '- subj_screen: DO NOT extract. Return null always. Will be computed from enrolled count.',
+    '',
+    'REGULATORY:',
+    '- ec_init: number of EC/IRB submissions. Always return 1 for Kazakhstan.',
+    '',
+    'FINANCIALS:',
+    '- tigermed_cost: Tigermed Professional Service Fee in USD if present.
+    '- referral_pct: referral partner commission rate. Almost always 0 — only extract if explicitly stated in document. Default null.',',
+    '  Look for "Budget Summary", "Professional Service Fee", "Total CRO Fee". Return null if not found.',
+    '',
+    '=== DO NOT RETURN THESE FIELDS - THEY ARE COMPUTED AUTOMATICALLY ===',
+    'imv_1day, imv_2day, rmv, siv, cov, co_mon, tmf_qc,',
+    'sae, susar, sig_issues,',
+    'tc_sponsor, tc_internal, site_pay, periodic_saf,',
+    'ec_annual, ctra, sites_feas, sites_screen',
+    '',
+    '=== FIXED DEFAULTS - always return these exact values ===',
+    '- markup: 1.45',
+    '- clin_upfront: 0.1',
+    '- kz_ops_mo: 2500',
+    '',
+    'Return JSON only. No prose, no markdown, no code fences.'
+  ];
+  const sys=sysLines.join('\n');
 
   let userContent;
   if(fileType==='pdf'){
@@ -381,7 +497,7 @@ Return JSON only. No prose, no markdown.`;
       {type:'document',source:{type:'base64',media_type:'application/pdf',data:fileContent}}
     ];
   } else {
-    userContent=`Extract clinical trial assumption values:\n\n${fileContent}\n\nReturn JSON only.`;
+    userContent='Extract clinical trial assumption values:\n\n'+fileContent+'\n\nReturn JSON only.';
   }
 
   const resp=await fetch('/api/claude',{
@@ -389,12 +505,12 @@ Return JSON only. No prose, no markdown.`;
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sys,messages:[{role:'user',content:userContent}]})
   });
-  if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(`API error ${resp.status}: ${err.error?.message||resp.statusText}`);}
+  if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error('API error '+resp.status+': '+(err.error?.message||resp.statusText));}
   const data=await resp.json();
   const txt=(data.content||[]).map(b=>b.text||'').join('');
   const clean=txt.replace(/```json|```/g,'').trim();
   try{return JSON.parse(clean);}
-  catch{throw new Error('Could not parse AI response: '+txt.slice(0,200));}
+  catch{throw new Error('Could not parse AI response as JSON: '+txt.slice(0,200));}
 }
 
 // ── HELPERS ──────────────────────────────────────────
@@ -406,9 +522,9 @@ function totalMo(){ return n('startup_mo')+n('enroll_mo')+n('treat_mo')+n('follo
 function buildServices(){
   const svc=[
     {name:"Project Management Related Documentation Development and Review",items:[
-      {lbl:"Initial Study Familiarization",cost:1100,units:1},
-      {lbl:"Kazakhstan Informed Consent Documentation",cost:3000,units:1},
-      {lbl:"Site-Specific Informed Consent Form Development & Review",cost:800,units:n('kz_sites')},
+      {lbl:"Initial study Familiarization",cost:1100,units:1},
+      {lbl:"KZ Inform Consent Documentation",cost:3000,units:1},
+      {lbl:"Site Specific ICF development, Review",cost:800,units:n('kz_sites')},
       {lbl:"Clinical Trial Research Agreement - Part 1",cost:2500,units:1},
       {lbl:"Clinical Trial Research Agreement - Part 2",cost:5000,units:1},
       {lbl:"Insurance Documentation Review",cost:850,units:1},
@@ -417,38 +533,38 @@ function buildServices(){
       {lbl:"Study Plans & Study Tracker Review",cost:2000,units:1},
     ]},
     {name:"Specific Site Startup and Regulatory Activity",items:[
-      {lbl:"Negotiate and Execute a Confidentiality Disclosure Agreement",cost:500,units:n('sites_screen')},
-      {lbl:"Obtain Investigators Curriculum Vitaes and Credentials",cost:650,units:1},
+      {lbl:"Negotiate and Execute a CDA with Each Potential Clinical Site",cost:500,units:n('sites_screen')},
+      {lbl:"Obtain Investigators CVs and other Credentials",cost:650,units:1},
       {lbl:"Finalize List of Potential Investigators",cost:1500,units:1},
       {lbl:"Site Feasibility Study",cost:250,units:n('sites_feas')},
       {lbl:"Site Selection Visit",cost:2000,units:n('kz_sites')},
-      {lbl:"Negotiate the Standard / Maximum Budget per Site",cost:2500,units:1},
+      {lbl:"Negotiate the Standard/Max Budget per site",cost:2500,units:1},
       {lbl:"Negotiate Contract Language with Site",cost:250,units:1},
       {lbl:"Distribute the Contract Templates and Protocol to Sites",cost:500,units:1},
-      {lbl:"Finalize Agreements with Investigators / Institutions",cost:1000,units:1},
+      {lbl:"Finalize Agreements with Investigators/Institutions",cost:1000,units:1},
       {lbl:"Take Decision on Clinical Sites to Include in Study",cost:500,units:1},
       {lbl:"Track Clinical Trial Agreements",cost:250,units:1},
       {lbl:"Project Set Up at Study Site",cost:2500,units:n('kz_sites')},
-      {lbl:"Distribute Study-Specific Documents & Tools to Sites",cost:1000,units:1},
-      {lbl:"Project Set Up at Satellite Site (Recruitment Only)",cost:1000,units:0},
+      {lbl:"Distribute Study Specific Documents & Tools to Sites",cost:1000,units:1},
+      {lbl:"Project Set Up at Satellite Site",cost:1000,units:0},
       {lbl:"Central Ethics Committee Initial Submission",cost:4000,units:n('ec_init')},
-      {lbl:"Preparation of Documents for Clinical Trial Registration",cost:5000,units:1},
-      {lbl:"Submission of Clinical Trial Registration",cost:5000,units:1},
+      {lbl:"Preparation of Docs for CTR Submission",cost:5000,units:1},
+      {lbl:"Submission of CTR",cost:5000,units:1},
       {lbl:"Ethics Committee Notification",cost:500,units:n('ec_init')},
       {lbl:"Ethics Committee Annual Reporting",cost:2500,units:n('ec_annual')},
-      {lbl:"Health Authority Investigational New Drug Initial Submission",cost:5000,units:1},
+      {lbl:"Health Authority IND Initial Submission",cost:5000,units:1},
       {lbl:"Health Authority Notification",cost:500,units:1},
       {lbl:"Health Authority Annual Reporting",cost:500,units:1},
       {lbl:"Regulatory Coordination and Document Management",cost:3500,units:1},
-      {lbl:"Maintain Communication with Official Agencies During Technical Review",cost:3000,units:1},
+      {lbl:"Maintain Communication with Official Agencies During the Process of Technical Review",cost:3000,units:1},
       {lbl:"Investigator Site File Set Up",cost:1000,units:n('kz_sites')},
     ]},
-    {name:"Central Laboratory / Bioanalytical Laboratory Partner Management",items:[
-      {lbl:"Identifying Laboratory Partners",cost:1500,units:1},
-      {lbl:"Central Laboratory Vendor Contract Signed",cost:3500,units:1},
-      {lbl:"Central Laboratory Routine Communication",cost:300,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
-      {lbl:"Bioanalytical Laboratory Vendor Contract Signed",cost:3500,units:1},
-      {lbl:"Bioanalytical Laboratory Routine Communication",cost:300,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+    {name:"Central Lab/Bio-Lab Testing",items:[
+      {lbl:"Identifying Lab Partners",cost:1500,units:1},
+      {lbl:"Central Lab Vendor Contract Signed and Payment",cost:3500,units:1},
+      {lbl:"Central Lab Routine Communication",cost:300,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+      {lbl:"Bio-Lab Vendor Contract Signed and Payment",cost:3500,units:1},
+      {lbl:"Bio-Lab Routine Communication",cost:300,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
     ]},
     {name:"Clinical Monitoring",items:[
       {lbl:"Site Initiation Visit",cost:2500,units:n('siv')},
@@ -456,37 +572,37 @@ function buildServices(){
       {lbl:"Remote Monitoring Visits",cost:750,units:n('rmv')},
       {lbl:"In-House Remote Monitoring",cost:500,units:n('enroll_mo')*n('kz_sites')},
       {lbl:"Communicate Significant Issues and Proposed Corrective Actions",cost:250,units:n('sig_issues')},
-      {lbl:"Follow Up on Issues Until Resolution",cost:150,units:n('sig_issues')},
+      {lbl:"Follow Up On Issues Until Resolution",cost:150,units:n('sig_issues')},
       {lbl:"Assess the Need for Additional Clinical Monitoring",cost:500,units:1},
       {lbl:"Approve Closure and Replacement of Clinical Sites",cost:500,units:1},
-      {lbl:"Report Serious Adverse Events to Regulatory Authorities",cost:200,units:n('sae')},
-      {lbl:"Report Suspected Serious Adverse Reactions to Investigators",cost:150,units:n('susar')},
-      {lbl:"Report Suspected Unexpected Serious Adverse Reactions",cost:250,units:n('susar')},
+      {lbl:"Report SAEs to Regulatory Authority",cost:200,units:n('sae')},
+      {lbl:"Report SSARs to Regulatory Authority",cost:150,units:n('susar')},
+      {lbl:"Report SUSARs to Ethics Committee & Investigators",cost:250,units:n('susar')},
       {lbl:"Site Management",cost:150,units:n('kz_sites')*n('enroll_mo')},
-      {lbl:"Site Close-Out Visit",cost:2500,units:n('cov')},
+      {lbl:"Site Close Out Visit",cost:2500,units:n('cov')},
     ]},
     {name:"Project Management and Progress Reporting",items:[
-      {lbl:"Bioanalytical Laboratory Vendor Routine Communication",cost:150,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
+      {lbl:"Bioanalytical Lab Vendor Routine Communication",cost:150,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
       {lbl:"Routine Communication with Tigermed",cost:500,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
       {lbl:"General Progress Reporting to Tigermed",cost:250,units:n('startup_mo')+n('enroll_mo')+n('treat_mo')},
       {lbl:"Update Study Trackers",cost:250,units:(n('startup_mo')+n('enroll_mo')+n('treat_mo'))*2},
-      {lbl:"Document Translation Quality Control and Management",cost:5000,units:1},
+      {lbl:"Document Translation QC and Management",cost:5000,units:1},
       {lbl:"Site Payment Processing and Tracking",cost:200,units:n('site_pay')},
       {lbl:"Routine Communication with Sites",cost:250,units:n('kz_sites')*(n('startup_mo')+n('enroll_mo')+n('treat_mo'))},
-      {lbl:"Sponsor Kazakhstan Visit",cost:5000,units:1},
+      {lbl:"Sponsor KZ Visit",cost:5000,units:1},
       {lbl:"Site Supply Management",cost:500,units:1},
       {lbl:"Study Document Support and Preparation",cost:3000,units:1},
-      {lbl:"Develop and Maintain a List of All Protocol Violations",cost:2500,units:1},
+      {lbl:"Develop and Maintain a List of All Protocol Violations/Deviations Including Confirmation of Reporting to IRB/EC",cost:2500,units:1},
     ]},
     {name:"Meeting and Training",items:[
       {lbl:"Study Team Training",cost:5000,units:2},
       {lbl:"Protocol Training",cost:1500,units:1},
       {lbl:"Protocol Amendment Training",cost:500,units:1},
       {lbl:"Organize and Attend Investigator Meeting",cost:7000,units:1},
-      {lbl:"Sponsor / Contract Research Organization Kick-Off Meeting",cost:1000,units:1},
-      {lbl:"Contract Research Organization Internal Kick-Off Meeting",cost:2000,units:1},
-      {lbl:"Regular Teleconference with Sponsor",cost:500,units:n('tc_sponsor')},
-      {lbl:"Contract Research Organization Internal Project Teleconference",cost:350,units:n('tc_internal')},
+      {lbl:"Sponsor/CRO Kick-off Meeting",cost:1000,units:1},
+      {lbl:"CRO Internal Kick-off Meeting",cost:2000,units:1},
+      {lbl:"Regular TC with Sponsor",cost:500,units:n('tc_sponsor')},
+      {lbl:"CRO Internal Project TC",cost:350,units:n('tc_internal')},
       {lbl:"Data Review Meeting",cost:7500,units:2},
       {lbl:"Regular Safety Meeting",cost:100,units:n('periodic_saf')*4},
     ]},
@@ -496,8 +612,8 @@ function buildServices(){
       {lbl:"Investigational Product Supply / Resupply Management",cost:250,units:n('kz_sites')*3},
     ]},
     {name:"Study Close-Out Process",items:[
-      {lbl:"Clinical Study Report Submission to Kazakhstan FDA",cost:1000,units:1},
-      {lbl:"Close-Out Process (Final Deliverables, Trial Master File Transfer, Archive)",cost:10000,units:1},
+      {lbl:"CSR Submission to KZ FDA",cost:1000,units:1},
+      {lbl:"Close Out Process",cost:10000,units:1},
     ]},
   ];
   let grand=0;
@@ -509,14 +625,53 @@ function buildServices(){
   return {sections:svc,grand};
 }
 
-function calcEstimate(){
-  const {grand}=buildServices();
-  const cro=n('tigermed_cost');
+function calcMgmtFee(){
+  // Mirrors _D105 in generate-excel.js exactly — verified against Excel line items
+  const s  =n('kz_sites');
+  const s_s=n('sites_screen');
+  const s_f=n('sites_feas');
+  const ec =n('ec_init')||1;
+  const eca=n('ec_annual')||1;
+  const su =n('startup_mo');
+  const en =n('enroll_mo');
+  const tr =n('treat_mo');
+  const fo =n('followup_mo');
+  const cl =n('closeout_mo');
+  const sut=su+en+tr;
+  const i1 =n('imv_1day');
+  const rmv=n('rmv');
+  const siv=n('siv')||s;
+  const cov=n('cov')||s;
+  const sae=n('sae');
+  const sus=n('susar');
+  const sig=n('sig_issues')||0;
+  const tcs=n('tc_sponsor')||0;
+  const tci=n('tc_internal')||0;
+  const sp =n('site_pay')||0;
+  const ps =n('periodic_saf')||0;
+  const _gtPM  = 1100+3000+800*s+2500+5000+850+100+500+2000;
+  const _gtSS  = 650+1500+500*s_s+250*s_f+2000*s+2500+250+500+1000+500+250+
+                 2500*s+1000+4000*ec+5000+5000+500*ec+2500*eca+5000+500+500+3500+3000+1000*s;
+  const _gtLab = 1500+3500+300*sut+3500+300*sut;
+  const _gtCM  = 2500*siv+1500*i1+750*rmv+500*en*s+250*sig+150*sig+500+500+
+                 200*sae+150*sus+250*sus+150*en*s+2500*cov;
+  const _gtPMR = 500*sut+250*sut+250*sut*2+5000+200*sp+250*s*sut+5000+500+3000+2500;
+  const _gtMT  = 10000+1500+500+7000+1000+2000+500*tcs+350*tci+15000+100*ps*4;
+  const _gtIP  = 300+2500+250*s*3;
+  const _gtCO  = 1000+10000;
+  return _gtPM+_gtSS+_gtLab+_gtCM+_gtPMR+_gtMT+_gtIP+_gtCO;
+}
+
+function calcEstimate(mgmtFeeOverride){
+  const grand=mgmtFeeOverride!=null?mgmtFeeOverride:calcMgmtFee();
+  // Clinical revenue matches Excel Clinical Costs sheet: (PER_PATIENT * subj_enroll + kz_sites * SITE_FEE) * markup
+  const PER_PATIENT=11762.5, SITE_FEE=2000;
+  const cro=(PER_PATIENT*n('subj_enroll'))+(SITE_FEE*n('kz_sites'));
   const clinRev=cro*n('markup');
   const totRev=grand+clinRev;
   const salaries=n('sal_charlie')+n('sal_zach')+n('sal_almas')+n('sal_didar')+n('sal_alex')+n('sal_alexander')+n('sal_shynar');
   const tm=totalMo();
-  const opex=salaries*tm+grand*n('ciprian_pct')+n('insurance_mo')*tm+n('tech_mo')*tm+n('travel_m1')+n('legal_m1')+n('kz_ops_mo')*(n('startup_mo')+n('enroll_mo'));
+  const opex=salaries*tm+grand*n('referral_pct')+n('insurance_mo')*tm+n('tech_mo')*tm+n('travel_m1')+n('legal_m1')+n('kz_ops_mo')*(n('startup_mo')+n('enroll_mo'));
   return {grand,clinRev,totRev,ebitda:totRev-cro-opex};
 }
 
@@ -596,8 +751,9 @@ async function generateModel(){
     const fname = 'Vantage_Pricing_'+(A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)+'.xlsx';
     a.href=url; a.download=fname; a.click();
     URL.revokeObjectURL(url);
-    // Done screen
-    const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate();
+    // Done screen — use server-computed mgmtFee so it matches Excel exactly
+    const serverMgmt = data.mgmtFee || null;
+    const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate(serverMgmt);
     ['dMgmt','dClin','dTotal','dEbitda'].forEach((id,i)=>{document.getElementById(id).textContent=fmt([g,c,t,e][i]);});
     goTo('done');
   } catch(err){
@@ -761,7 +917,7 @@ function generateModel_OLD(){
   asm.push([lbl('Total Monthly Salaries (auto)'),yell(salaries,'$#,##0'),nt('Auto-sum')]);
   asm.push([em(),em(),em()]);
   asm.push([sHdr('  OPERATING EXPENSES (monthly unless noted)'),em(),em()]);
-  asmPush('Ciprian Commission Rate',n('ciprian_pct'),false,'0.000','Applied to all revenue collected each month');
+  asmPush('Ciprian Commission Rate',n('referral_pct'),false,'0.000','Applied to all revenue collected each month');
   asmPush('Insurance (monthly)',n('insurance_mo'),false,'$#,##0');
   asmPush('Technology Stack (monthly)',n('tech_mo'),false,'$#,##0');
   asmPush('Travel & Accommodation (Month 1 only)',n('travel_m1'),false,'$#,##0');
@@ -939,7 +1095,7 @@ function generateModel_OLD(){
   const rev_a=Array(numM).fill(0).map((_,i)=>mgmt_a[i]+clin_a[i]);
   const cro_a=Array(numM).fill(0).map((_,i)=>{if(i===0)return cro*n('clin_upfront');if(i>=cStart&&i<cStart+cSpread)return(cro*(1-n('clin_upfront')))/cSpread;return 0;});
   const sal_a=Array(numM).fill(salaries);
-  const cip_a=rev_a.map(v=>v*n('ciprian_pct'));
+  const cip_a=rev_a.map(v=>v*n('referral_pct'));
   const kzS=n('startup_mo');const kzE=kzS+n('enroll_mo');
   const kzops_a=Array(numM).fill(0).map((_,i)=>(i>=kzS&&i<kzE)?n('kz_ops_mo'):0);
   const ins_a=Array(numM).fill(n('insurance_mo'));
