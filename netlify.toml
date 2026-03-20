@@ -1,5 +1,5 @@
 [build]
-  publish = "public"
+  publish = "."
   functions = "netlify/functions"
 
 [[redirects]]
@@ -12,4 +12,4 @@
   to = "/.netlify/functions/generate-excel"
   status = 200
   force = true
-# nonce-153681
+# nonce-229517
