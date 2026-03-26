@@ -1,4 +1,4 @@
-<!-- vantage-v31-nonce-445521 -->
+<!-- vantage-v28e-nonce-967020 -->
 <!-- Vantage Pricing Engine v12b - 2026-03-11 03:59:54 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -221,7 +221,7 @@ const FIELDS = [
   {k:"kz_sites",      lbl:"Kazakhstan Sites Initiated",                 grp:"Sites & Subjects", t:"number", def:null,   note:"Full Vantage-managed sites"},
   {k:"sites_feas",    lbl:"Sites Feasibility Assessed",                 grp:"Sites & Subjects", t:"number", def:15},
   {k:"sites_screen",  lbl:"Sites Screened",                             grp:"Sites & Subjects", t:"number", def:12},
-  {k:"subj_screen",   lbl:"Subjects Screened",                          grp:"Sites & Subjects", t:"number", def:135},
+  {k:"subj_screen",   lbl:"Subjects Screened",                          grp:"Sites & Subjects", t:"number", def:140},
   {k:"subj_enroll",   lbl:"Subjects Enrolled",                          grp:"Sites & Subjects", t:"number", def:108},
   {k:"ec_init",       lbl:"Ethics Committee Initial Submissions",       grp:"Regulatory",       t:"number", def:1,      note:"One submission for Kazakhstan"},
   {k:"ec_annual",     lbl:"Ethics Committee Annual Reports",            grp:"Regulatory",       t:"number", def:2,      note:"One per year while trial is active"},
@@ -242,7 +242,7 @@ const FIELDS = [
   {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number", def:null},
   {k:"tigermed_cost", lbl:"Tigermed CRO Quote (USD)",                   grp:"Financial",        t:"number", def:4134072, note:"From Budget Summary page"},
   {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", def:1.45,   note:"Revenue = Tigermed x Markup, e.g. 1.45"},
-  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.1,    note:"Portion billed at contract signing"},
+  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.2,    note:"Portion billed at contract signing"},
   {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", def:2500,   note:"Active during startup and enrollment"},
   {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number", def:4000},
   {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number", def:4000},
@@ -251,8 +251,7 @@ const FIELDS = [
   {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number", def:4000},
   {k:"sal_alexander", lbl:"Alexander salary monthly USD",               grp:"Team Salaries",    t:"number", def:1000},
   {k:"sal_shynar",    lbl:"Shynar salary monthly USD",                  grp:"Team Salaries",    t:"number", def:1000},
-  {k:"referral_pct",  lbl:"Referral Partner Commission Rate",            grp:"OpEx",             t:"number", def:0,      note:"Applied to all revenue each month — 0 if no referral partner"},
-  {k:"referral_name", lbl:"Referral Partner Name",                       grp:"OpEx",             t:"text",   def:"—"},
+  {k:"ciprian_pct",   lbl:"Ciprian Commission Rate",                    grp:"OpEx",             t:"number", def:0.005,  note:"Applied to all revenue each month"},
   {k:"insurance_mo",  lbl:"Insurance monthly USD",                      grp:"OpEx",             t:"number", def:200},
   {k:"tech_mo",       lbl:"Technology Stack monthly USD",               grp:"OpEx",             t:"number", def:500},
   {k:"travel_m1",     lbl:"Travel and Accommodation Month 1",           grp:"OpEx",             t:"number", def:1000},
@@ -330,8 +329,8 @@ function computeDerivedDefaults() {
   A.sites_screen = Math.round(sites * 1.5);
   A.ctra         = sites;
   A.ec_annual    = Math.max(1, Math.ceil(total / 12));
-  // subj_screen: always computed from enrolled (3x ratio) — never extracted from synopsis
-  A.subj_screen = Math.round(subj * 3.0);
+  // subj_screen: always computed from enrolled (30% screen failure) — never extracted from synopsis
+  A.subj_screen = Math.round(subj * 1.3);
 }
 computeDerivedDefaults(); // run once at startup with FIELDS defaults
 
@@ -464,7 +463,7 @@ async function extractFromSynopsis(fileContent,fileType){
     '- kz_sites: Kazakhstan sites Vantage will manage. Sponsors specify patient counts not sites — almost never stated in a synopsis.',
     '  Only extract if the synopsis explicitly states KZ/Vantage-specific site count. Do NOT infer from global site counts (e.g. "50 sites worldwide" is irrelevant).',
     '  Return null in virtually all cases.',
-    '- subj_enroll: total subjects to be enrolled. If the study has multiple parts (e.g. Part 1 safety lead-in, Part 2 randomized), extract ONLY the primary/largest enrolled cohort (e.g. Part 2 number). Do NOT sum parts. Return null if ambiguous.',
+    '- subj_enroll: total subjects to be enrolled (use the global randomized/enrolled number)',
     '- subj_screen: DO NOT extract. Return null always. Will be computed from enrolled count.',
     '',
     'REGULATORY:',
@@ -472,7 +471,6 @@ async function extractFromSynopsis(fileContent,fileType){
     '',
     'FINANCIALS:',
     '- tigermed_cost: Tigermed Professional Service Fee in USD if present.',
-    '- referral_pct: referral partner commission rate. Almost always 0 — only extract if explicitly stated in document. Default null.',
     '  Look for "Budget Summary", "Professional Service Fee", "Total CRO Fee". Return null if not found.',
     '',
     '=== DO NOT RETURN THESE FIELDS - THEY ARE COMPUTED AUTOMATICALLY ===',
@@ -483,7 +481,7 @@ async function extractFromSynopsis(fileContent,fileType){
     '',
     '=== FIXED DEFAULTS - always return these exact values ===',
     '- markup: 1.45',
-    '- clin_upfront: 0.1',
+    '- clin_upfront: 0.2',
     '- kz_ops_mo: 2500',
     '',
     'Return JSON only. No prose, no markdown, no code fences.'
@@ -664,14 +662,16 @@ function calcMgmtFee(){
 
 function calcEstimate(mgmtFeeOverride){
   const grand=mgmtFeeOverride!=null?mgmtFeeOverride:calcMgmtFee();
-  // Clinical revenue matches Excel Clinical Costs sheet: (PER_PATIENT * subj_enroll + kz_sites * SITE_FEE) * markup
-  const PER_PATIENT=11762.5, SITE_FEE=2000;
-  const cro=(PER_PATIENT*n('subj_enroll'))+(SITE_FEE*n('kz_sites'));
+  // Clinical revenue matches Excel Clinical Costs sheet: PER_PATIENT * subj_enroll * markup
+  // PER_PATIENT = generic template default (screening + treatment + followup) * 1.25 contingency + 2000 PI
+  // Generic default: screening 650 + treatment 2035 + followup 430 = 3115 * 1.25 = 3893.75 + 2000 PI = 5893.75
+  const PER_PATIENT=5893.75;
+  const cro=(PER_PATIENT*n('subj_enroll'));
   const clinRev=cro*n('markup');
   const totRev=grand+clinRev;
   const salaries=n('sal_charlie')+n('sal_zach')+n('sal_almas')+n('sal_didar')+n('sal_alex')+n('sal_alexander')+n('sal_shynar');
   const tm=totalMo();
-  const opex=salaries*tm+grand*n('referral_pct')+n('insurance_mo')*tm+n('tech_mo')*tm+n('travel_m1')+n('legal_m1')+n('kz_ops_mo')*(n('startup_mo')+n('enroll_mo'));
+  const opex=salaries*tm+grand*n('ciprian_pct')+n('insurance_mo')*tm+n('tech_mo')*tm+n('travel_m1')+n('legal_m1')+n('kz_ops_mo')*(n('startup_mo')+n('enroll_mo'));
   return {grand,clinRev,totRev,ebitda:totRev-cro-opex};
 }
 
@@ -917,7 +917,7 @@ function generateModel_OLD(){
   asm.push([lbl('Total Monthly Salaries (auto)'),yell(salaries,'$#,##0'),nt('Auto-sum')]);
   asm.push([em(),em(),em()]);
   asm.push([sHdr('  OPERATING EXPENSES (monthly unless noted)'),em(),em()]);
-  asmPush('Ciprian Commission Rate',n('referral_pct'),false,'0.000','Applied to all revenue collected each month');
+  asmPush('Ciprian Commission Rate',n('ciprian_pct'),false,'0.000','Applied to all revenue collected each month');
   asmPush('Insurance (monthly)',n('insurance_mo'),false,'$#,##0');
   asmPush('Technology Stack (monthly)',n('tech_mo'),false,'$#,##0');
   asmPush('Travel & Accommodation (Month 1 only)',n('travel_m1'),false,'$#,##0');
@@ -1063,15 +1063,14 @@ function generateModel_OLD(){
   const {st:fuTot,sr:fuRev}=clinSec('Follow-Up',[['Physician visit',1,80],['Safety laboratory panel',1,150],['Patient compensation (follow-up)',1,200]]);
   const subTot=scTot+trTot+fuTot;
   const cont=subTot*0.25;
-  const perPat=subTot+cont;
-  const piCost=n('kz_sites')*2000;
-  const totClinCost=perPat*n('subj_enroll')+piCost;
+  const piCostPerPat=2000;
+  const perPat=subTot+cont+piCostPerPat;
+  const totClinCost=perPat*n('subj_enroll');
   const totClinRev=totClinCost*mk;
   cc.push([em(),C('Contingency (+25%):',{...Fb},fills.none,{horizontal:'left'},{}),em(),em(),C(cont,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),C(cont*mk,F,fills.none,{horizontal:'center'},bdr,'$#,##0')]);
+  cc.push([em(),C('Principal Investigator / Sub-Investigator Fee (per patient)',F,fills.none,{horizontal:'left'},bdr),C(1,F,fills.none,{horizontal:'center'},bdr),C(piCostPerPat,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),C(piCostPerPat,F,fills.none,{horizontal:'center'},bdr,'$#,##0'),C(piCostPerPat*mk,F,fills.none,{horizontal:'center'},bdr,'$#,##0')]);
   cc.push([em(),totC('TOTAL PER PATIENT:'),emF(fills.black),emF(fills.black),totC(perPat),totC(perPat*mk)]);
   cc.push([em(),em(),em(),em(),em(),em()]);
-  cc.push([sHdr('  SITE / PRINCIPAL INVESTIGATOR COSTS'),emF(fills.blue),emF(fills.blue),emF(fills.blue),emF(fills.blue),emF(fills.blue)]);
-  cc.push([em(),C('Principal Investigator / Sub-Investigator Fee (per Kazakhstan site)',F,fills.white,{horizontal:'left'},bdr),C(n('kz_sites'),F,fills.white,{horizontal:'center'},bdr),C(2000,F,fills.white,{horizontal:'center'},bdr,'$#,##0'),C(piCost,F,fills.white,{horizontal:'center'},bdr,'$#,##0'),C(piCost*mk,F,fills.white,{horizontal:'center'},bdr,'$#,##0')]);
   cc.push([sHdr('Total - All Enrolled Patients'),emF(fills.blue),emF(fills.blue),emF(fills.blue),C(totClinCost,{...Fb,...wt},fills.blue,{horizontal:'center'},bdr,'$#,##0'),C(totClinRev,{...Fb,...wt},fills.blue,{horizontal:'center'},bdr,'$#,##0')]);
   const wsCc=XLSX.utils.aoa_to_sheet(cc);
   wsCc['!cols']=[{wch:5},{wch:56},{wch:12},{wch:16},{wch:16},{wch:20}];
@@ -1095,7 +1094,7 @@ function generateModel_OLD(){
   const rev_a=Array(numM).fill(0).map((_,i)=>mgmt_a[i]+clin_a[i]);
   const cro_a=Array(numM).fill(0).map((_,i)=>{if(i===0)return cro*n('clin_upfront');if(i>=cStart&&i<cStart+cSpread)return(cro*(1-n('clin_upfront')))/cSpread;return 0;});
   const sal_a=Array(numM).fill(salaries);
-  const cip_a=rev_a.map(v=>v*n('referral_pct'));
+  const cip_a=rev_a.map(v=>v*n('ciprian_pct'));
   const kzS=n('startup_mo');const kzE=kzS+n('enroll_mo');
   const kzops_a=Array(numM).fill(0).map((_,i)=>(i>=kzS&&i<kzE)?n('kz_ops_mo'):0);
   const ins_a=Array(numM).fill(n('insurance_mo'));
