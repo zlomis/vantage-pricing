@@ -1,5 +1,5 @@
-<!-- vantage-v28e-nonce-967020 -->
-<!-- Vantage Pricing Engine v12b - 2026-03-11 03:59:54 -->
+<!-- vantage-v22-nonce-441837 -->
+<!-- Vantage Pricing Engine v22 - 2026-03-27 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,84 +7,329 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vantage Pricing Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Spartan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{
-  --black:#000000;--blue:#0060C4;--blue-lt:#E8EEF7;--gray50:#F5F7FA;--white:#FFFFFF;
-  --navy:#0B1E3D;--teal:#00A896;--teal-lt:#E6F7F5;--gold:#FFFBEA;--bg:#F2F4F8;
-  --g100:#EAECF0;--g200:#D5D9E0;--g400:#8E95A3;--g600:#505869;--g900:#0F1623;
+  /* Vantage Brand */
+  --vantage-blue:#1B6BF5;
+  --vantage-navy:#1A1A2E;
+  --vantage-blue-lt:#EBF2FF;
+  --vantage-blue-mid:#4A8DF8;
+
+  /* Surface & Structure */
+  --bg:#F0F2F7;
+  --white:#FFFFFF;
+  --card-border:#DDE2ED;
+  --card-shadow:0 1px 3px rgba(26,26,46,0.07), 0 4px 16px rgba(26,26,46,0.05);
+
+  /* Grays */
+  --g50:#F7F8FA;
+  --g100:#ECEEF3;
+  --g200:#D8DCE8;
+  --g400:#8892A8;
+  --g600:#4A5368;
+  --g900:#1A1A2E;
+
+  /* Input highlight */
+  --input-fill:#F5F8FF;
+
+  /* Status */
   --err:#DC2626;--ok:#059669;
 }
+
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--g900);min-height:100vh;}
-header{background:var(--black);padding:0 40px;height:62px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--blue);}
+body{
+  font-family:'Spartan',sans-serif;
+  background:var(--bg);
+  color:var(--g900);
+  min-height:100vh;
+}
+
+/* ── HEADER ── */
+header{
+  background:var(--vantage-navy);
+  padding:0 40px;
+  height:64px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  position:sticky;
+  top:0;
+  z-index:100;
+  border-bottom:2px solid rgba(27,107,245,0.6);
+  box-shadow:0 2px 20px rgba(0,0,0,0.25);
+}
 .logo{display:flex;align-items:center;flex-shrink:0;gap:10px;}
-.h-title{color:#fff;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.2px;}
-.h-sub{color:rgba(255,255,255,0.4);font-size:11px;margin-top:1px;}
-.stepper{display:flex;align-items:center;gap:3px;margin-left:auto;}
-.step{display:flex;align-items:center;gap:6px;opacity:0.35;transition:opacity 0.2s;}
-.step.active{opacity:1;}.step.done{opacity:0.6;}
-.sdot{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);transition:all 0.2s;}
-.step.active .sdot{background:var(--blue);color:#fff;}.step.done .sdot{background:var(--ok);color:#fff;}
-.slbl{font-size:11px;color:rgba(255,255,255,0.55);font-weight:500;}.sdiv{width:18px;height:1px;background:rgba(255,255,255,0.12);}
-main{max-width:860px;margin:0 auto;padding:32px 20px;}
-.card{background:#fff;border-radius:10px;border:1px solid var(--g200);box-shadow:0 1px 8px rgba(0,0,0,0.06);overflow:hidden;}
-.card-bd{padding:18px;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:7px;border:none;font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
-.btn-black{background:var(--black);color:#fff;}.btn-black:hover{background:#222;}
-.btn-blue{background:var(--blue);color:#fff;}.btn-blue:hover{background:#0052aa;}
-.btn-teal{background:var(--teal);color:#fff;}.btn-teal:hover{background:#008a7c;}
-.btn-ghost{background:var(--g100);color:var(--g600);}.btn-ghost:hover{background:var(--g200);}
-.btn-lg{padding:12px 26px;font-size:14px;border-radius:9px;}
-.stage{display:none;}.stage.active{display:block;}
-#dropZone{border:2px dashed var(--g200);border-radius:10px;padding:50px 40px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--g100);}
-#dropZone.over,#dropZone:hover{border-color:var(--blue);background:#EBF2FC;}
-.drop-icon{margin:0 auto 14px;display:block;opacity:0.4;}
-.drop-h{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--navy);margin-bottom:5px;}
-.drop-s{font-size:12.5px;color:var(--g400);margin-bottom:18px;}
+.h-wordmark{color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;letter-spacing:2.5px;}
+.h-divider{width:1px;height:28px;background:rgba(255,255,255,0.12);margin:0 4px;}
+.h-title{color:rgba(255,255,255,0.7);font-size:12px;font-weight:500;letter-spacing:0.3px;}
+.h-sub{color:rgba(255,255,255,0.3);font-size:10.5px;margin-top:2px;}
+
+/* ── STEPPER ── */
+.stepper{display:flex;align-items:center;gap:4px;margin-left:auto;}
+.step{display:flex;align-items:center;gap:7px;opacity:0.3;transition:opacity 0.25s;}
+.step.active{opacity:1;}.step.done{opacity:0.55;}
+.sdot{
+  width:22px;height:22px;border-radius:50%;
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:rgba(255,255,255,0.4);
+  transition:all 0.2s;
+}
+.step.active .sdot{
+  background:var(--vantage-blue);
+  border-color:var(--vantage-blue);
+  color:#fff;
+  box-shadow:0 0 0 3px rgba(27,107,245,0.3);
+}
+.step.done .sdot{background:var(--ok);border-color:var(--ok);color:#fff;}
+.slbl{font-size:10.5px;color:rgba(255,255,255,0.5);font-weight:500;letter-spacing:0.2px;}
+.sdiv{width:20px;height:1px;background:rgba(255,255,255,0.1);}
+
+/* ── LAYOUT ── */
+main{max-width:880px;margin:0 auto;padding:36px 20px;}
+
+/* ── CARD ── */
+.card{
+  background:var(--white);
+  border-radius:12px;
+  border:1px solid var(--card-border);
+  box-shadow:var(--card-shadow);
+  overflow:hidden;
+}
+.card-bd{padding:20px;}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 18px;border-radius:8px;border:none;
+  font-family:'Spartan',sans-serif;font-weight:600;font-size:13px;
+  cursor:pointer;transition:all 0.15s;white-space:nowrap;
+}
+.btn-primary{
+  background:var(--vantage-blue);color:#fff;
+  box-shadow:0 1px 3px rgba(27,107,245,0.3);
+}
+.btn-primary:hover{background:#1559d4;box-shadow:0 2px 8px rgba(27,107,245,0.4);}
+/* keep old class names working */
+.btn-blue{background:var(--vantage-blue);color:#fff;box-shadow:0 1px 3px rgba(27,107,245,0.3);}
+.btn-blue:hover{background:#1559d4;}
+.btn-black{background:var(--vantage-navy);color:#fff;}
+.btn-black:hover{background:#2a2a45;}
+.btn-teal{background:var(--vantage-blue);color:#fff;}
+.btn-teal:hover{background:#1559d4;}
+.btn-ghost{
+  background:transparent;color:var(--g600);
+  border:1px solid var(--g200);
+}
+.btn-ghost:hover{background:var(--g100);border-color:var(--g400);}
+.btn-lg{padding:13px 28px;font-size:14px;border-radius:10px;}
+
+/* ── STAGES ── */
+.stage{display:none;animation:fadeUp 0.3s ease-out;}
+.stage.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── UPLOAD SCREEN ── */
+.upload-hero{margin-bottom:28px;}
+.sh{
+  font-family:'Syne',sans-serif;font-size:26px;font-weight:800;
+  color:var(--vantage-navy);margin-bottom:8px;line-height:1.1;
+}
+.sh span{color:var(--vantage-blue);}
+.ss{color:var(--g600);font-size:13.5px;line-height:1.6;max-width:560px;}
+
+#dropZone{
+  border:2px dashed var(--g200);
+  border-radius:12px;
+  padding:52px 40px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.2s;
+  background:var(--g50);
+  position:relative;
+  overflow:hidden;
+}
+#dropZone::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%, rgba(27,107,245,0.04) 0%, transparent 70%);
+  pointer-events:none;
+}
+#dropZone.over,#dropZone:hover{
+  border-color:var(--vantage-blue);
+  background:var(--vantage-blue-lt);
+}
+#dropZone.over::before,#dropZone:hover::before{
+  background:radial-gradient(ellipse at 50% 0%, rgba(27,107,245,0.08) 0%, transparent 70%);
+}
+.drop-icon{margin:0 auto 16px;display:block;opacity:0.35;}
+.drop-h{
+  font-family:'Syne',sans-serif;font-size:17px;font-weight:700;
+  color:var(--vantage-navy);margin-bottom:6px;
+}
+.drop-s{font-size:12.5px;color:var(--g400);margin-bottom:20px;}
+
 .info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;}
-.info-c{padding:16px;background:#fff;border-radius:9px;border:1px solid var(--g200);}
-.info-ico{font-size:20px;margin-bottom:8px;}.info-t{font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:3px;}
-.info-d{font-size:11.5px;color:var(--g600);line-height:1.5;}
-.spin-wrap{text-align:center;padding:80px 0;}
-.spinner{width:42px;height:42px;border:4px solid var(--g200);border-top-color:var(--blue);border-radius:50%;animation:spin 0.75s linear infinite;margin:0 auto 18px;}
+.info-c{
+  padding:18px;background:var(--white);border-radius:10px;
+  border:1px solid var(--card-border);
+  box-shadow:0 1px 4px rgba(26,26,46,0.05);
+  transition:transform 0.2s, box-shadow 0.2s;
+}
+.info-c:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(26,26,46,0.1);}
+.info-ico{font-size:22px;margin-bottom:10px;}
+.info-t{
+  font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;
+  color:var(--vantage-navy);margin-bottom:4px;
+}
+.info-d{font-size:11.5px;color:var(--g600);line-height:1.55;}
+
+/* ── EXTRACTING SCREEN ── */
+.spin-wrap{text-align:center;padding:90px 0;}
+.spinner{
+  width:44px;height:44px;
+  border:3px solid var(--g200);
+  border-top-color:var(--vantage-blue);
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+  margin:0 auto 22px;
+}
 @keyframes spin{to{transform:rotate(360deg);}}
-.spin-h{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--navy);}
-.spin-s{color:var(--g600);font-size:13px;margin-top:6px;}
+.spin-h{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;color:var(--vantage-navy);}
+.spin-s{color:var(--g600);font-size:13px;margin-top:8px;line-height:1.5;}
+
+/* ── REVIEW SCREEN ── */
 .rev-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
-.rev-h{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--navy);}
+.rev-h{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;color:var(--vantage-navy);}
 .rev-s{font-size:12.5px;color:var(--g600);margin-top:3px;}
-.banner{background:var(--black);border-left:4px solid var(--blue);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;gap:24px;flex-wrap:wrap;}
-.banner-lbl{font-size:9.5px;color:rgba(255,255,255,0.4);font-weight:700;letter-spacing:0.9px;text-transform:uppercase;}
-.banner-val{color:#fff;font-weight:700;font-size:13.5px;margin-top:2px;}
+
+.banner{
+  background:var(--vantage-navy);
+  border-radius:10px;
+  padding:14px 18px;
+  margin-bottom:14px;
+  display:flex;gap:28px;flex-wrap:wrap;
+  border-left:3px solid var(--vantage-blue);
+  box-shadow:0 2px 12px rgba(26,26,46,0.15);
+}
+.banner-lbl{
+  font-size:9px;color:rgba(255,255,255,0.35);
+  font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+}
+.banner-val{color:#fff;font-weight:600;font-size:13px;margin-top:3px;}
+
+/* ── TABS ── */
 .tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;}
-.tab{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--g200);background:#fff;color:var(--g600);cursor:pointer;transition:all 0.12s;}
-.tab.active{background:var(--black);border-color:var(--black);color:#fff;font-weight:600;}
-.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.fi{display:flex;flex-direction:column;gap:4px;}
-.fi label{font-size:11px;font-weight:500;color:var(--g600);}
-.fi .fnote{font-style:italic;color:var(--g400);font-size:10px;}
-.fi input{padding:8px 10px;border:1px solid var(--g200);border-radius:6px;font-size:12.5px;font-family:'DM Sans',sans-serif;background:var(--gold);color:var(--blue);font-weight:600;width:100%;outline:none;transition:border-color 0.12s;}
-.fi input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,96,196,0.1);}
-.live{margin-top:14px;padding:14px 16px;background:var(--teal-lt);border-radius:9px;border:1px solid rgba(0,168,150,0.2);}
-.live-lbl{font-size:10px;font-weight:700;color:var(--teal);letter-spacing:0.8px;margin-bottom:10px;}
-.live-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.live-il{font-size:10.5px;color:var(--teal);font-weight:600;}
-.live-iv{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:var(--navy);margin-top:2px;}
-.done-ico{font-size:50px;text-align:center;margin-bottom:8px;animation:pop 0.4s ease-out;}
+.tab{
+  padding:6px 14px;border-radius:20px;font-size:11.5px;font-weight:500;
+  border:1px solid var(--g200);background:var(--white);color:var(--g600);
+  cursor:pointer;transition:all 0.12s;
+}
+.tab:hover{border-color:var(--vantage-blue);color:var(--vantage-blue);}
+.tab.active{
+  background:var(--vantage-navy);border-color:var(--vantage-navy);
+  color:#fff;font-weight:600;
+}
+
+/* ── FIELD INPUTS ── */
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fi{display:flex;flex-direction:column;gap:5px;}
+.fi label{font-size:11px;font-weight:600;color:var(--g600);letter-spacing:0.2px;}
+.fi .fnote{font-style:italic;color:var(--g400);font-size:9.5px;}
+.fi .proto-badge{
+  display:inline-block;
+  background:var(--vantage-blue);color:#fff;
+  font-size:9px;font-weight:700;padding:2px 6px;
+  border-radius:4px;margin-left:6px;letter-spacing:.3px;
+  cursor:help;vertical-align:middle;
+}
+.fi input{
+  padding:8px 11px;
+  border:1px solid var(--g200);
+  border-radius:7px;
+  font-size:12.5px;
+  font-family:'Spartan',sans-serif;
+  background:var(--input-fill);
+  color:var(--vantage-blue);
+  font-weight:600;
+  width:100%;outline:none;
+  transition:border-color 0.12s, box-shadow 0.12s;
+}
+.fi input:focus{
+  border-color:var(--vantage-blue);
+  box-shadow:0 0 0 3px rgba(27,107,245,0.12);
+  background:#fff;
+}
+
+/* ── LIVE ESTIMATE ── */
+.live{
+  margin-top:16px;padding:16px 18px;
+  background:var(--vantage-navy);
+  border-radius:10px;
+  box-shadow:0 2px 12px rgba(26,26,46,0.15);
+}
+.live-lbl{
+  font-size:9px;font-weight:700;
+  color:rgba(255,255,255,0.35);
+  letter-spacing:1.2px;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.live-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.live-il{font-size:10px;color:rgba(255,255,255,0.4);font-weight:600;letter-spacing:0.3px;}
+.live-iv{
+  font-family:'Syne',sans-serif;font-size:20px;font-weight:800;
+  color:#fff;margin-top:3px;
+}
+.live-iv-accent{color:var(--vantage-blue-mid);}
+
+/* ── DONE SCREEN ── */
+.done-ico{font-size:52px;text-align:center;margin-bottom:10px;animation:pop 0.4s ease-out;}
 @keyframes pop{0%{transform:scale(0.5);opacity:0;}80%{transform:scale(1.1);}100%{transform:scale(1);opacity:1;}}
+.done-headline{
+  font-family:'Syne',sans-serif;font-size:24px;font-weight:800;
+  color:var(--vantage-navy);text-align:center;
+}
+.done-sub{color:var(--g600);font-size:13.5px;text-align:center;margin-top:6px;}
+
 .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
-.metric-box{background:var(--black);border-top:3px solid var(--blue);border-radius:9px;padding:16px;text-align:center;}
+.metric-box{
+  background:var(--vantage-navy);
+  border-top:3px solid var(--vantage-blue);
+  border-radius:10px;padding:18px;text-align:center;
+  box-shadow:0 2px 8px rgba(26,26,46,0.12);
+}
 .metric-v{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;}
-.metric-l{font-size:10px;color:rgba(255,255,255,0.45);margin-top:4px;font-weight:500;}
+.metric-l{font-size:9.5px;color:rgba(255,255,255,0.38);margin-top:5px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;}
+
 .sheet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-.sheet-c{padding:14px;background:#fff;border-radius:9px;border:1px solid var(--g200);}
-.sheet-t{font-weight:700;color:var(--navy);font-size:12.5px;margin-bottom:3px;}
-.sheet-d{font-size:11px;color:var(--g600);line-height:1.45;}
-.sh{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;color:var(--navy);margin-bottom:5px;}
-.ss{color:var(--g600);font-size:13.5px;margin-bottom:22px;line-height:1.5;}
-.err{margin-top:10px;padding:12px 16px;border-radius:7px;background:#FEF2F2;border:1px solid #FECACA;color:var(--err);font-size:13px;font-weight:500;line-height:1.5;}
+.sheet-c{
+  padding:15px;background:var(--white);border-radius:10px;
+  border:1px solid var(--card-border);
+  transition:border-color 0.15s;
+}
+.sheet-c:hover{border-color:var(--vantage-blue);}
+.sheet-t{font-weight:700;color:var(--vantage-navy);font-size:12.5px;margin-bottom:4px;}
+.sheet-d{font-size:11px;color:var(--g600);line-height:1.5;}
+
+/* ── SIGNALS PANEL ── */
+#signalsPanel{
+  background:var(--vantage-blue-lt);
+  border:1px solid rgba(27,107,245,0.2);
+  border-left:3px solid var(--vantage-blue);
+  border-radius:10px;
+  padding:12px 14px;
+  margin-bottom:14px;
+}
+
+/* ── ERRORS ── */
+.err{
+  margin-top:10px;padding:12px 16px;border-radius:8px;
+  background:#FEF2F2;border:1px solid #FECACA;
+  color:var(--err);font-size:13px;font-weight:500;line-height:1.6;
+  white-space:pre-wrap;
+}
 .err-tip{font-size:11px;color:var(--g600);margin-top:5px;font-weight:400;}
 .hidden{display:none!important;}
 </style>
@@ -92,15 +337,13 @@ main{max-width:860px;margin:0 auto;padding:32px 20px;}
 <body>
 <header>
   <div class="logo">
-    <!-- Vantage "V" chevron mark -->
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="36" height="36" rx="4" fill="#0060C4"/>
+    <svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="36" height="36" rx="6" fill="#1B6BF5"/>
       <polygon points="6,8 18,28 30,8 25,8 18,20 11,8" fill="white"/>
     </svg>
-    <svg width="90" height="18" viewBox="0 0 90 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="14" font-family="Century Gothic, Arial, sans-serif" font-size="14" font-weight="700" fill="white" letter-spacing="2">VANTAGE</text>
-    </svg>
+    <span class="h-wordmark">VANTAGE</span>
   </div>
+  <div class="h-divider"></div>
   <div><div class="h-title">Pricing Engine</div><div class="h-sub">Synopsis → Full 7-Sheet Model</div></div>
   <div class="stepper" id="stepper" style="display:none">
     <div class="step" data-s="0"><div class="sdot">1</div><div class="slbl">Upload</div></div>
@@ -115,14 +358,16 @@ main{max-width:860px;margin:0 auto;padding:32px 20px;}
 <main>
 
 <div class="stage active" id="s-upload">
-  <div class="sh">Upload Synopsis or Proposal</div>
-  <p class="ss">Upload a clinical trial synopsis (PDF) or Tigermed proposal. Claude extracts all key assumptions and generates a full 7-sheet Vantage pricing model — Cover, Assumptions, Sponsor Output, Overview, Management Services, Clinical Costs, and P&amp;L.</p>
+  <div class="upload-hero">
+    <div class="sh">Generate a <span>Pricing Model</span></div>
+    <p class="ss">Upload a clinical trial synopsis or Tigermed proposal. Claude extracts all key assumptions and generates a full 7-sheet Vantage pricing model — Cover, Assumptions, Sponsor Output, Overview, Management Services, Clinical Costs, and P&amp;L.</p>
+  </div>
   <div class="card"><div class="card-bd">
     <div id="dropZone">
-      <svg class="drop-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8E95A3" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
-      <div class="drop-h">Drop your file here</div>
-      <div class="drop-s">PDF synopsis, Tigermed proposal, DOCX or TXT</div>
-      <button class="btn btn-teal" onclick="document.getElementById('fi').click()">Browse File</button>
+      <svg class="drop-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8892A8" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+      <div class="drop-h">Drop your synopsis here</div>
+      <div class="drop-s">PDF synopsis · Tigermed proposal · DOCX · TXT</div>
+      <button class="btn btn-primary" onclick="document.getElementById('fi').click()">Browse File</button>
       <input type="file" id="fi" accept=".pdf,.docx,.txt,.doc" style="display:none">
     </div>
     <div class="err hidden" id="uploadErr"><span id="uploadErrMsg"></span><div class="err-tip">💡 For more detail: right-click → Inspect → Console tab</div></div>
@@ -148,7 +393,7 @@ main{max-width:860px;margin:0 auto;padding:32px 20px;}
     <div><div class="rev-h">Review Extracted Assumptions</div><div class="rev-s" id="revSub">Review and adjust before generating</div></div>
     <div style="display:flex;gap:7px;flex-shrink:0;margin-top:3px;">
       <button class="btn btn-ghost" onclick="goTo('upload')">← Back</button>
-      <button class="btn btn-blue" onclick="generateModel()">⬇ Generate Model</button>
+      <button class="btn btn-primary" onclick="generateModel()">⬇ Generate Model</button>
     </div>
   </div>
   <div class="banner">
@@ -158,6 +403,7 @@ main{max-width:860px;margin:0 auto;padding:32px 20px;}
     <div><div class="banner-lbl">Duration</div><div class="banner-val" id="bDur">—</div></div>
     <div><div class="banner-lbl">KZ Sites</div><div class="banner-val" id="bSites">—</div></div>
   </div>
+  <div id="signalsPanel" style="display:none;background:#f0f5ff;border:1px solid #c5d8ff;border-radius:6px;padding:10px 12px;margin-bottom:12px;"></div>
   <div class="tabs" id="tabs"></div>
   <div class="card"><div class="card-bd"><div class="field-grid" id="fieldGrid"></div></div></div>
   <div class="live">
@@ -175,10 +421,10 @@ main{max-width:860px;margin:0 auto;padding:32px 20px;}
 </div>
 
 <div class="stage" id="s-done">
-  <div style="text-align:center;margin-bottom:24px;">
+  <div style="text-align:center;margin-bottom:28px;">
     <div class="done-ico">✅</div>
-    <div class="rev-h">Model Downloaded</div>
-    <p style="color:var(--g600);font-size:13.5px;margin-top:6px;">Your 7-sheet Vantage Pricing Model has been saved.</p>
+    <div class="done-headline">Model Downloaded</div>
+    <p class="done-sub">Your 7-sheet Vantage Pricing Model has been saved.</p>
   </div>
   <div class="metric-grid">
     <div class="metric-box"><div class="metric-v" id="dMgmt">—</div><div class="metric-l">Management Fee</div></div>
@@ -269,9 +515,11 @@ FIELDS.forEach(f=>{ A[f.k]=f.def; });
 function computeDerivedDefaults() {
   // Derive kz_sites from phase if not explicitly extracted
   if (!A.kz_sites) {
+    const is2b = /2b|phase\s*iib/i.test(A.phase||'');
     const is3 = /phase\s*3|phase\s*iii/i.test(A.phase||'');
     const is2 = /phase\s*2|phase\s*ii(?!i)/i.test(A.phase||'');
-    A.kz_sites = is3 ? 10 : is2 ? 5 : 3; // Phase 1/1b = 3, Phase 2 = 5, Phase 3 = 10
+    const _ph3 = is3 && !is2b;
+    A.kz_sites = _ph3 ? 10 : (is2 || is2b) ? 5 : 3; // Phase 1/1b = 3, Phase 2/2b = 5, Phase 3 = 10
   }
   const sites   = Number(A.kz_sites);
   const enroll  = Number(A.enroll_mo)   || 8;
@@ -289,14 +537,17 @@ function computeDerivedDefaults() {
     }
   }
 
+  const is2b = /2b|phase\s*iib/i.test(A.phase||'');
   const is3 = /phase\s*3|phase\s*iii/i.test(A.phase||'');
   const is2 = /phase\s*2|phase\s*ii(?!i)/i.test(A.phase||'');
+  const use_ph3 = is3 && !is2b;
+  const use_ph2 = (is2 || is2b) && !use_ph3;
 
-  if (is3) {
+  if (use_ph3) {
     setIfNull('imv_1day', sites * enroll * 0.5 + sites * followup / 6);
     setIfNull('imv_2day', 0);
     setIfNull('rmv',      sites * enroll * 0.5 + sites * followup / 6);
-  } else if (is2) {
+  } else if (use_ph2) {
     setIfNull('imv_1day', sites * enroll * 0.75 + sites * treat * 0.5);
     setIfNull('imv_2day', sites * enroll * 0.25);
     setIfNull('rmv',      sites * (enroll + treat + followup) * 0.5);
@@ -316,11 +567,11 @@ function computeDerivedDefaults() {
   const saeRate  = isOnco ? 0.30 : isCardio ? 0.05 : 0.10;
   const susarRate= isOnco ? 0.10 : isCardio ? 0.05 : 0.05;
   setIfNull('sae',       Math.ceil(subj * saeRate * 3));
-  setIfNull('susar',     Math.ceil(subj * susarRate * 3));
+  setIfNull('susar',     Math.ceil(subj * susarRate));
   setIfNull('sig_issues',Math.max(3, Math.round(sites * 0.5)));
 
-  setIfNull('tc_sponsor',  Math.round((startup + enroll) * 2 + (treat + followup + closeout) * 1));
-  setIfNull('tc_internal', Math.round(((startup + enroll) * 2 + (treat + followup + closeout) * 1) * 2));
+  setIfNull('tc_sponsor',  Math.round(total * 2));
+  setIfNull('tc_internal', Math.round(total * 2 * 2));
   setIfNull('site_pay',    sites * Math.ceil(total / 3));
   setIfNull('periodic_saf',Math.max(1, Math.ceil(total / 12)));
 
@@ -333,6 +584,76 @@ function computeDerivedDefaults() {
   A.subj_screen = Math.round(subj * 1.3);
 }
 computeDerivedDefaults(); // run once at startup with FIELDS defaults
+
+// ── PROTOCOL SIGNAL OVERRIDES ─────────────────────────────────────────────────
+// Stores notes explaining why a value was overridden from formula default
+if(!A._overrideNotes) A._overrideNotes = {};
+
+function applySignalOverrides(signals) {
+  if(!signals) return;
+  A._overrideNotes = {};
+
+  const sites   = Number(A.kz_sites)    || 1;
+  const enroll  = Number(A.enroll_mo)   || 8;
+  const treat   = Number(A.treat_mo)    || 4;
+  const followup= Number(A.followup_mo) || 1;
+  const startup = Number(A.startup_mo)  || 4;
+  const closeout= Number(A.closeout_mo) || 2;
+  const total   = startup + enroll + treat + followup + closeout;
+  const active  = enroll + treat + followup;
+
+  // ── MONITORING INTENSITY ──────────────────────────────────────────────────
+  if(signals.monitoring_intensity) {
+    const mi = signals.monitoring_intensity;
+    let newImv = null, newRmv = null;
+    if     (mi === 'monthly')      { newImv = Math.round(sites * active);       newRmv = Math.round(sites * active * 0.5); }
+    else if(mi === 'bimonthly')    { newImv = Math.round(sites * active * 0.5); newRmv = Math.round(sites * active * 0.25); }
+    else if(mi === 'quarterly')    { newImv = Math.round(sites * active / 3);   newRmv = Math.round(sites * active / 3); }
+    else if(mi === 'remote-heavy') { newImv = Math.round(sites * active / 4);   newRmv = Math.round(sites * active * 0.75); }
+    if(newImv !== null) {
+      A.imv_1day = newImv; A.rmv = newRmv;
+      const note = signals.monitoring_note || 'Protocol: monitoring cadence specified';
+      A._overrideNotes['imv_1day'] = note; A._overrideNotes['rmv'] = note;
+    }
+  }
+
+  // ── TELECONFERENCE CADENCE ────────────────────────────────────────────────
+  if(signals.tc_cadence) {
+    const freqMap = { weekly: 4, biweekly: 2, monthly: 1, quarterly: 0.25 };
+    const freq = freqMap[signals.tc_cadence];
+    if(freq !== undefined) {
+      A.tc_sponsor  = Math.round(total * freq);
+      A.tc_internal = Math.round(A.tc_sponsor * 2);
+      const note = signals.tc_note || 'Protocol: teleconference cadence specified';
+      A._overrideNotes['tc_sponsor'] = note; A._overrideNotes['tc_internal'] = note;
+    }
+  }
+
+  // ── SAFETY BODY & MEETING FREQUENCY ──────────────────────────────────────
+  if(signals.safety_body) {
+    if(signals.safety_body === 'SMC') {
+      A.periodic_saf = signals.cohort_count || 3;
+      A._overrideNotes['periodic_saf'] = signals.safety_body_note || 'Internal SMC: review per cohort (not independent DSMB)';
+    } else if(signals.safety_body === 'DSMB') {
+      A.periodic_saf = Math.max(2, Math.ceil(total / 3));
+      A._overrideNotes['periodic_saf'] = signals.safety_body_note || 'Independent DSMB: quarterly reviews';
+    }
+  }
+
+  // ── SUSAR RATE ADJUSTMENT ─────────────────────────────────────────────────
+  if(signals.susar_flag) {
+    const subj = Number(A.subj_enroll) || 30;
+    if(signals.susar_flag === 'low') {
+      A.susar = Math.max(1, Math.ceil(subj * 0.05));
+      A._overrideNotes['susar'] = signals.susar_note || 'Established safety profile / prior clinical data';
+    } else if(signals.susar_flag === 'high') {
+      const ind = String(A.indication||'').toLowerCase();
+      const isOnco = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
+      A.susar = Math.ceil(subj * (isOnco ? 0.15 : 0.10));
+      A._overrideNotes['susar'] = signals.susar_note || 'Novel mechanism / limited prior safety data';
+    }
+  }
+}
 
 // ── NAVIGATION ──────────────────────────────────────
 const STAGES=['upload','extracting','review','done'];
@@ -366,7 +687,13 @@ document.getElementById('fi').addEventListener('change',e=>handleFile(e.target.f
 function showErr(msg){
   console.error('[Vantage]', msg);
   const errEl=document.getElementById('uploadErr');
-  document.getElementById('uploadErrMsg').textContent=msg;
+  // Friendly message for token limit errors
+  let display = msg;
+  if(msg.includes('prompt is too long') || msg.includes('too long') || msg.includes('413')){
+    display = 'This PDF is too large to process in full. Please upload just the synopsis or first 20–30 pages.\n\n'
+      + 'To convert a PDF to text: open in Chrome or Preview → Select All → Copy → paste into a .txt file and upload that instead.';
+  }
+  document.getElementById('uploadErrMsg').textContent=display;
   errEl.classList.remove('hidden');
   goTo('upload');
 }
@@ -374,6 +701,16 @@ function showErr(msg){
 async function handleFile(f){
   if(!f) return;
   console.log('[Vantage] File selected:', f.name, f.size, 'bytes');
+
+  // Pre-flight size check — PDFs over 4MB risk exceeding the 200k token limit
+  if(f.name.toLowerCase().endsWith('.pdf') && f.size > 4 * 1024 * 1024){
+    showErr(
+      'This PDF is large (' + (f.size / (1024*1024)).toFixed(1) + ' MB) and may exceed the AI processing limit.\n\n'
+      + 'For best results, upload just the synopsis section (first 20–30 pages).\n\n'
+      + 'Alternatively, convert to text: open in Chrome or Preview → Select All → Copy → paste into a .txt file and upload that instead.'
+    );
+    return;
+  }
 
   activeFile=f;
   document.getElementById('uploadErr').classList.add('hidden');
@@ -406,10 +743,16 @@ async function handleFile(f){
       console.log('[Vantage] Text file read, length:', content.length);
     }
 
-    document.getElementById('spinFile').textContent='Claude is extracting assumptions from '+f.name+'…';
-    console.log('[Vantage] Calling Claude API…');
-    const ex=await extractFromSynopsis(content, ftype);
+    document.getElementById('spinFile').textContent='Claude is reading '+f.name+'…';
+    console.log('[Vantage] Calling Claude API (parallel extraction)…');
+
+    // Run both extractions in parallel — assumptions + protocol signals
+    const [ex, signals] = await Promise.all([
+      extractFromSynopsis(content, ftype),
+      extractProtocolSignals(content, ftype)
+    ]);
     console.log('[Vantage] Extraction result:', ex);
+    console.log('[Vantage] Protocol signals:', signals);
 
     FIELDS.forEach(field=>{
       if(ex[field.k]!==undefined && ex[field.k]!==null && ex[field.k]!==''){
@@ -420,6 +763,12 @@ async function handleFile(f){
     ['imv_1day','imv_2day','rmv','siv','cov','co_mon','tmf_qc',
      'sae','susar','sig_issues','tc_sponsor','tc_internal','site_pay','periodic_saf'].forEach(k=>{A[k]=null;});
     computeDerivedDefaults();
+
+    // Apply protocol-specific overrides on top of formula defaults
+    if(signals) applySignalOverrides(signals);
+
+    // Store signals for display in review panel
+    A._signals = signals;
     goTo('review');
 
   } catch(e){
@@ -509,6 +858,91 @@ async function extractFromSynopsis(fileContent,fileType){
   const clean=txt.replace(/```json|```/g,'').trim();
   try{return JSON.parse(clean);}
   catch{throw new Error('Could not parse AI response as JSON: '+txt.slice(0,200));}
+}
+
+// ── PROTOCOL SIGNAL EXTRACTION ────────────────────────────────────────────────
+// Second-pass extraction: reads the same document looking for protocol language
+// that should override formula-computed defaults. Returns a signals object.
+async function extractProtocolSignals(fileContent, fileType) {
+  const sysLines = [
+    'You are a clinical trial analyst. Read this protocol/synopsis and extract specific operational signals.',
+    'Your answers directly affect monitoring visit counts, safety report counts, and teleconference budgets.',
+    'Be conservative — only flag a signal if the protocol language is clear and unambiguous.',
+    'Return ONLY valid JSON with exactly these keys. Use null for anything not clearly stated.',
+    '',
+    '=== SIGNALS TO EXTRACT ===',
+    '',
+    'monitoring_intensity: How frequently does the protocol specify on-site monitoring visits?',
+    '  Return one of: "monthly", "bimonthly", "quarterly", "remote-heavy", or null.',
+    '  - "monthly" = protocol says monitoring every month, or "monthly monitoring visits"',
+    '  - "bimonthly" = every 2 months, or "bimonthly monitoring"',
+    '  - "quarterly" = every 3 months, or "quarterly site visits"',
+    '  - "remote-heavy" = "centralized monitoring", "risk-based monitoring", "RBM", or "remote monitoring acceptable" as primary approach',
+    '  - null = no explicit monitoring cadence stated (most synopses will be null)',
+    '',
+    'monitoring_note: If monitoring_intensity is non-null, quote the exact protocol section/phrase that led to your answer. Else null.',
+    '',
+    'safety_body: What type of safety oversight body does the protocol specify?',
+    '  Return: "SMC", "DSMB", "both", or null.',
+    '  - "SMC" = Safety Monitoring Committee, internal safety review, sponsor safety committee',
+    '  - "DSMB" = Data Safety Monitoring Board, independent DSMB, independent Data Monitoring Committee',
+    '  - "both" = study has both (e.g. SMC for Part 1 lead-in, DSMB for Part 2 randomized)',
+    '  - null = not specified',
+    '',
+    'safety_body_note: Quote the exact protocol language describing the safety body. Else null.',
+    '',
+    'cohort_count: If safety_body is "SMC" and the study uses dose escalation cohorts, how many cohorts are planned?',
+    '  Return integer (e.g. 3 for a 3+3 design with 3 dose levels) or null.',
+    '',
+    'tc_cadence: Does the protocol explicitly state a teleconference frequency between sponsor and CRO/investigator?',
+    '  Return: "weekly", "biweekly", "monthly", "quarterly", or null.',
+    '  Only return non-null if the protocol explicitly states a meeting frequency, not just mentions meetings exist.',
+    '',
+    'tc_note: If tc_cadence is non-null, quote the exact phrase. Else null.',
+    '',
+    'susar_flag: Based on the drug\'s safety history and mechanism novelty, should SUSAR rate be adjusted?',
+    '  Return: "low", "high", or null.',
+    '  - "low" = established IND with prior clinical data, well-characterised safety profile, known drug class',
+    '  - "high" = first-in-human, novel mechanism with no prior clinical data, completely unknown safety profile',
+    '  - null = standard risk (most studies)',
+    '',
+    'susar_note: If susar_flag is non-null, quote the exact language supporting your assessment. Else null.',
+    '',
+    'fda_ind: Does this study operate under a US FDA IND? Return true or false.',
+    '',
+    'single_site_lead_in: Is Part 1 / the lead-in phase explicitly described as a single-site or limited-site phase? Return true or false.',
+    '',
+    'Return JSON only. No prose, no markdown, no code fences.',
+    'When in doubt, return null. Do not over-interpret vague language.'
+  ];
+
+  const sys = sysLines.join('\n');
+  let userContent;
+  if(fileType === 'pdf') {
+    userContent = [
+      {type:'text', text:'Extract operational protocol signals from this document. Return JSON only.'},
+      {type:'document', source:{type:'base64', media_type:'application/pdf', data:fileContent}}
+    ];
+  } else {
+    userContent = 'Extract operational protocol signals:\n\n' + fileContent + '\n\nReturn JSON only.';
+  }
+
+  const resp = await fetch('/api/claude', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      system: sys,
+      messages:[{role:'user', content:userContent}]
+    })
+  });
+  if(!resp.ok) { console.warn('[Vantage] Signal extraction failed:', resp.status); return null; }
+  const data = await resp.json();
+  const txt  = (data.content||[]).map(b=>b.text||'').join('');
+  const clean = txt.replace(/```json|```/g,'').trim();
+  try { return JSON.parse(clean); }
+  catch { console.warn('[Vantage] Could not parse signal extraction response'); return null; }
 }
 
 // ── HELPERS ──────────────────────────────────────────
@@ -684,8 +1118,40 @@ function updateEstimate(){
 }
 
 // ── REVIEW UI ────────────────────────────────────────
+function renderSignalsSummary(){
+  // Render a compact summary of what protocol signals were detected
+  // Inject into a signals-panel div if it exists
+  const panel = document.getElementById('signalsPanel');
+  if(!panel) return;
+  const sig = A._signals;
+  if(!sig) { panel.style.display='none'; return; }
+
+  const items = [];
+  if(sig.monitoring_intensity) items.push({icon:'🔍', label:'Monitoring', val:sig.monitoring_intensity, note:sig.monitoring_note});
+  if(sig.safety_body)          items.push({icon:'🛡️', label:'Safety Body', val:sig.safety_body, note:sig.safety_body_note});
+  if(sig.tc_cadence)           items.push({icon:'📞', label:'TC Cadence', val:sig.tc_cadence, note:sig.tc_note});
+  if(sig.susar_flag)           items.push({icon:'⚠️', label:'SUSAR Profile', val:sig.susar_flag, note:sig.susar_note});
+  if(sig.fda_ind)              items.push({icon:'🇺🇸', label:'FDA IND', val:'Active', note:'US IND detected — regulatory overhead applies'});
+  if(sig.single_site_lead_in)  items.push({icon:'🏥', label:'Lead-In Phase', val:'Single site', note:'Part 1 described as single/limited site phase'});
+
+  if(items.length === 0){ panel.style.display='none'; return; }
+
+  panel.style.display='block';
+  panel.innerHTML = '<div style="font-size:11px;font-weight:700;color:#1B6BF5;margin-bottom:6px;letter-spacing:.5px;">📋 PROTOCOL SIGNALS DETECTED</div>'
+    + items.map(it=>`
+      <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:10px;">
+        <span>${it.icon}</span>
+        <div>
+          <strong>${it.label}:</strong> <span style="color:#1B6BF5;font-weight:600;">${it.val}</span>
+          ${it.note ? `<div style="color:#888;font-style:italic;margin-top:1px;font-size:9px;">${it.note.slice(0,120)}${it.note.length>120?'…':''}</div>` : ''}
+        </div>
+      </div>`).join('')
+    + '<div style="font-size:9px;color:#aaa;margin-top:6px;">Hover 📋 Protocol badges in the fields below to see which values were adjusted</div>';
+}
+
 function renderReview(){
   updateBanner();
+  renderSignalsSummary();
   const tabsEl=document.getElementById('tabs');
   tabsEl.innerHTML='';
   GROUPS.forEach(g=>{
@@ -711,13 +1177,27 @@ function renderFields(){
   FIELDS.filter(f=>f.grp===activeGrp).forEach(field=>{
     const div=document.createElement('div');div.className='fi';
     const lbl=document.createElement('label');lbl.textContent=field.lbl;
-    if(field.note){const s=document.createElement('span');s.className='fnote';s.textContent=' -- '+field.note;lbl.appendChild(s);}
+
+    // Show protocol override badge if this field was overridden from a signal
+    const overrideNote = (A._overrideNotes||{})[field.k];
+    if(overrideNote){
+      const badge=document.createElement('span');
+      badge.className='proto-badge';
+      badge.textContent='📋 Protocol';
+      badge.title=overrideNote;
+      lbl.appendChild(badge);
+    } else if(field.note){
+      const s=document.createElement('span');s.className='fnote';s.textContent=' — '+field.note;lbl.appendChild(s);
+    }
+
     const inp=document.createElement('input');
     inp.type=field.t==='number'?'number':'text';
     if(field.t==='number') inp.step=field.k.includes('pct')||field.k.includes('markup')||field.k.includes('upfront')?'0.001':'1';
     inp.value=A[field.k]??'';
     inp.addEventListener('input',e=>{
       A[field.k]=field.t==='number'?(parseFloat(e.target.value)||0):e.target.value;
+      // Clear override note if user manually edits the field
+      if(A._overrideNotes) delete A._overrideNotes[field.k];
       updateBanner();updateEstimate();
     });
     div.appendChild(lbl);div.appendChild(inp);grid.appendChild(div);
