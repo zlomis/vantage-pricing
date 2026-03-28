@@ -1,5 +1,5 @@
-<!-- vantage-v31 -->
-<!-- Vantage Pricing Engine v13 - 2026-03-28 -->
+<!-- vantage-v32 -->
+<!-- Vantage Pricing Engine v13a - 2026-03-28 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -720,6 +720,10 @@ main {
 
     <div class="done-actions">
       <button class="btn-ghost" onclick="goTo('review')">← Edit Assumptions</button>
+      <button class="btn-ghost" id="logBtn" onclick="downloadAssumptionLog()" disabled style="opacity:0.6;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        ⏳ Building log…
+      </button>
       <button class="btn-primary" onclick="resetApp()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New Study
@@ -1195,7 +1199,13 @@ function applySignalOverrides(signals) {
 }
 
 // ── ASSUMPTION LOG (Word .docx) ───────────────────────
+let _assumptionLogBlob = null;
+let _assumptionLogName = '';
+
 async function generateAssumptionLog() {
+  _assumptionLogBlob = null;
+  const logBtn = document.getElementById('logBtn');
+  if (logBtn) { logBtn.disabled = true; logBtn.textContent = '⏳ Building log…'; }
   try {
     const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
             AlignmentType, WidthType, ShadingType, BorderStyle, HeadingLevel } = docx;
@@ -1342,17 +1352,26 @@ async function generateAssumptionLog() {
     });
 
     const buf = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(buf);
-    const a = document.createElement('a');
     const safeName = (A.study_name || 'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
-    a.href = url;
-    a.download = 'Vantage_Assumption_Log_' + safeName + '.docx';
-    a.click();
-    URL.revokeObjectURL(url);
-    console.log('[Vantage] Assumption log downloaded.');
+    _assumptionLogBlob = buf;
+    _assumptionLogName = 'Vantage_Assumption_Log_' + safeName + '.docx';
+    if (logBtn) {
+      logBtn.disabled = false;
+      logBtn.textContent = '⬇ Download Assumption Log (.docx)';
+    }
+    console.log('[Vantage] Assumption log ready.');
   } catch(err) {
     console.warn('[Vantage] Assumption log generation failed (non-fatal):', err.message);
+    if (logBtn) { logBtn.disabled = false; logBtn.textContent = '⬇ Download Assumption Log (.docx)'; }
   }
+}
+
+function downloadAssumptionLog() {
+  if (!_assumptionLogBlob) { alert('Assumption log is still being prepared — please try again in a moment.'); return; }
+  const url = URL.createObjectURL(_assumptionLogBlob);
+  const a = document.createElement('a');
+  a.href = url; a.download = _assumptionLogName; a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── HELPERS ──────────────────────────────────────────
@@ -1593,8 +1612,8 @@ async function generateModel(){
     const fname = 'Vantage_Pricing_'+(A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)+'.xlsx';
     a.href=url; a.download=fname; a.click();
     URL.revokeObjectURL(url);
-    // Generate assumption log Word doc (non-blocking)
-    await generateAssumptionLog();
+    // Pre-build assumption log in background — shown as button on done screen
+    generateAssumptionLog();
     // Done screen — use server-computed mgmtFee so it matches Excel exactly
     const serverMgmt = data.mgmtFee || null;
     const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate(serverMgmt);
