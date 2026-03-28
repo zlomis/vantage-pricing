@@ -1,5 +1,5 @@
-<!-- vantage-v30-final -->
-<!-- Vantage Pricing Engine v12b - 2026-03-11 03:59:54 -->
+<!-- vantage-v31 -->
+<!-- Vantage Pricing Engine v13 - 2026-03-28 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 <style>
 /* ── DESIGN TOKENS ─────────────────────────────────────────────── */
 :root {
@@ -618,6 +619,7 @@ main {
     <div class="extract-steps">
       <div class="extract-step"><div class="extract-dot"></div>Parsing document structure</div>
       <div class="extract-step"><div class="extract-dot"></div>Extracting study assumptions</div>
+      <div class="extract-step"><div class="extract-dot"></div>Reading explicit protocol signals</div>
       <div class="extract-step"><div class="extract-dot"></div>Applying phase-tiered formulas</div>
     </div>
   </div>
@@ -686,7 +688,7 @@ main {
   <div class="done-wrap">
     <div class="done-icon">✓</div>
     <div class="done-h">Model Downloaded</div>
-    <div class="done-s">Your 8-sheet Vantage Pricing Model is ready.</div>
+    <div class="done-s">Your 8-sheet Vantage Pricing Model and Assumption Log are ready.</div>
 
     <div class="done-metrics">
       <div class="done-metric">
@@ -934,19 +936,38 @@ async function handleFile(f){
       console.log('[Vantage] Text file read, length:', content.length);
     }
 
-    document.getElementById('spinFile').textContent='Claude is extracting assumptions from '+f.name+'…';
-    console.log('[Vantage] Calling Claude API…');
-    const ex=await extractFromSynopsis(content, ftype);
+    document.getElementById('spinFile').textContent='Claude is reading '+f.name+' — extracting assumptions & protocol signals…';
+    console.log('[Vantage] Calling Claude API (parallel: assumptions + signals)…');
+
+    const [exResult, sigResult] = await Promise.allSettled([
+      extractFromSynopsis(content, ftype),
+      extractProtocolSignals(content, ftype)
+    ]);
+
+    if (exResult.status === 'rejected') throw exResult.reason;
+    const ex = exResult.value;
     console.log('[Vantage] Extraction result:', ex);
 
+    const signals = sigResult.status === 'fulfilled' ? sigResult.value : null;
+    if (sigResult.status === 'rejected') console.warn('[Vantage] Signal extraction failed (non-fatal):', sigResult.reason.message);
+    else console.log('[Vantage] Signal result:', signals);
+
+    // Apply extracted fields
     FIELDS.forEach(field=>{
       if(ex[field.k]!==undefined && ex[field.k]!==null && ex[field.k]!==''){
         A[field.k]=ex[field.k];
       }
     });
-    // Reset derived fields so they recompute fresh from extracted kz_sites/enroll_mo etc.
+
+    // Reset derived fields so they recompute fresh
     ['imv_1day','imv_2day','rmv','siv','cov','co_mon','tmf_qc',
      'sae','susar','sig_issues','tc_sponsor','tc_internal','site_pay','periodic_saf'].forEach(k=>{A[k]=null;});
+    A._overrideNotes = [];
+    A._safetyCommittee = null;
+
+    // Apply signal overrides BEFORE formula defaults, so formulas only fill remaining nulls
+    if (signals) applySignalOverrides(signals);
+
     computeDerivedDefaults();
     goTo('review');
 
@@ -1037,6 +1058,301 @@ async function extractFromSynopsis(fileContent,fileType){
   const clean=txt.replace(/```json|```/g,'').trim();
   try{return JSON.parse(clean);}
   catch{throw new Error('Could not parse AI response as JSON: '+txt.slice(0,200));}
+}
+
+// ── PROTOCOL SIGNAL EXTRACTION ───────────────────────
+async function extractProtocolSignals(fileContent, fileType) {
+  const sys = [
+    'You are a clinical trial operations analyst. Read this protocol and extract ONLY explicitly stated operational signals.',
+    'Do NOT infer or estimate — return null for anything not explicitly stated in the document.',
+    '',
+    'Return ONLY valid JSON with this exact structure:',
+    '{',
+    '  "monitoring_freq": null,         // e.g. "monthly during enrollment", "every 6 weeks", null if not stated',
+    '  "monitoring_cadence_imv": null,   // explicit number of on-site monitoring visits per site per year, or null',
+    '  "remote_monitoring_freq": null,   // e.g. "bi-weekly remote review", null if not stated',
+    '  "safety_committee": null,         // "DSMB", "IDMC", "DMC", "Safety Review Committee", or null if none stated',
+    '  "tc_freq_sponsor": null,          // explicit teleconference frequency e.g. "monthly", "bi-weekly", null',
+    '  "susar_reporting_required": null, // true if document explicitly requires SUSAR reporting, false if explicitly excluded, null if not mentioned',
+    '  "sae_rate_pct": null,             // explicit expected SAE rate as a number (e.g. 30 for 30%), null if not stated',
+    '  "notes": []                       // array of human-readable strings explaining each non-null signal found',
+    '}',
+    '',
+    'Examples of explicit signals (EXTRACT these):',
+    '  "Sites will be monitored monthly during enrollment"',
+    '  "A DSMB will convene every 6 months"',
+    '  "Sponsor teleconferences will be held bi-weekly"',
+    '',
+    'Examples of things to IGNORE (return null):',
+    '  General ICH E6 or GCP references',
+    '  Vague language like "adequate monitoring"',
+    '  Anything about global site counts or non-KZ operations',
+    '',
+    'Return JSON only. No prose, no markdown, no code fences.'
+  ].join('\n');
+
+  let userContent;
+  if (fileType === 'pdf') {
+    userContent = [
+      { type: 'text', text: 'Extract explicit operational monitoring and safety signals from this protocol. Return JSON only.' },
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileContent } }
+    ];
+  } else {
+    userContent = 'Extract explicit operational signals:\n\n' + fileContent + '\n\nReturn JSON only.';
+  }
+
+  const resp = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: sys, messages: [{ role: 'user', content: userContent }] })
+  });
+  if (!resp.ok) throw new Error('Signal API error ' + resp.status);
+  const data = await resp.json();
+  const txt = (data.content || []).map(b => b.text || '').join('');
+  const clean = txt.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+// ── APPLY SIGNAL OVERRIDES ────────────────────────────
+function applySignalOverrides(signals) {
+  if (!signals || typeof signals !== 'object') return;
+  A._overrideNotes = A._overrideNotes || [];
+
+  const sites   = Number(A.kz_sites) || 3;
+  const enroll  = Number(A.enroll_mo) || 8;
+  const treat   = Number(A.treat_mo) || 4;
+  const followup= Number(A.followup_mo) || 1;
+  const total   = (Number(A.startup_mo)||4) + enroll + treat + followup + (Number(A.closeout_mo)||2);
+
+  // Monitoring frequency → IMV count override
+  if (signals.monitoring_cadence_imv !== null && signals.monitoring_cadence_imv !== undefined) {
+    const visitsPerSitePerYear = Number(signals.monitoring_cadence_imv);
+    if (!isNaN(visitsPerSitePerYear) && visitsPerSitePerYear > 0) {
+      const activeMonths = enroll + treat + followup;
+      A.imv_1day = Math.round(sites * visitsPerSitePerYear * (activeMonths / 12));
+      A._overrideNotes.push(`IMV (1-day) overridden to ${A.imv_1day} — protocol specifies ${visitsPerSitePerYear} on-site visits/site/year across ${activeMonths} active months at ${sites} sites.`);
+    }
+  } else if (signals.monitoring_freq) {
+    const freq = signals.monitoring_freq.toLowerCase();
+    let visitsPerMonth = null;
+    if (/monthly|every month|once a month/.test(freq)) visitsPerMonth = 1;
+    else if (/bi.?weekly|every (two|2) weeks|fortnightly/.test(freq)) visitsPerMonth = 0.5;
+    else if (/every (six|6) weeks/.test(freq)) visitsPerMonth = 0.38;
+    else if (/quarterly|every (three|3) months/.test(freq)) visitsPerMonth = 0.33;
+    else if (/every (two|2) months|bi.?monthly/.test(freq)) visitsPerMonth = 0.5;
+
+    if (visitsPerMonth !== null) {
+      const activeMonths = enroll + treat + followup;
+      A.imv_1day = Math.round(sites * visitsPerMonth * activeMonths);
+      A._overrideNotes.push(`IMV (1-day) overridden to ${A.imv_1day} — protocol states "${signals.monitoring_freq}" (${visitsPerMonth.toFixed(2)} visits/site/month × ${activeMonths} months × ${sites} sites).`);
+    }
+  }
+
+  // TC frequency override
+  if (signals.tc_freq_sponsor) {
+    const freq = signals.tc_freq_sponsor.toLowerCase();
+    let tcPerMonth = null;
+    if (/monthly/.test(freq)) tcPerMonth = 1;
+    else if (/bi.?weekly|every (two|2) weeks/.test(freq)) tcPerMonth = 2;
+    else if (/weekly/.test(freq)) tcPerMonth = 4;
+    else if (/quarterly/.test(freq)) tcPerMonth = 0.33;
+
+    if (tcPerMonth !== null) {
+      A.tc_sponsor = Math.round(tcPerMonth * total);
+      A.tc_internal = Math.round(A.tc_sponsor * 2);
+      A._overrideNotes.push(`Sponsor TCs overridden to ${A.tc_sponsor} — protocol specifies "${signals.tc_freq_sponsor}" TCs (${tcPerMonth}/month × ${total} months). Internal TCs = ${A.tc_internal}.`);
+    }
+  }
+
+  // SUSAR flag
+  if (signals.susar_reporting_required === false) {
+    A.susar = 0;
+    A._overrideNotes.push('SUSAR set to 0 — protocol explicitly states SUSAR reporting is not required for this study.');
+  }
+
+  // SAE rate override
+  if (signals.sae_rate_pct !== null && signals.sae_rate_pct !== undefined) {
+    const rate = Number(signals.sae_rate_pct) / 100;
+    if (!isNaN(rate) && rate > 0) {
+      const subj = Number(A.subj_enroll) || 30;
+      A.sae = Math.round(subj * rate * 3);
+      A._overrideNotes.push(`SAE count overridden to ${A.sae} — protocol states expected SAE rate of ${signals.sae_rate_pct}% (${subj} subjects × ${signals.sae_rate_pct}% × 3 reports/SAE).`);
+    }
+  }
+
+  // Safety committee type — store as metadata, no numeric override
+  if (signals.safety_committee) {
+    A._safetyCommittee = signals.safety_committee;
+    A._overrideNotes.push(`Safety committee: Protocol specifies a ${signals.safety_committee}. Periodic safety reports may need adjustment manually.`);
+  }
+
+  // Append any notes from the signal call itself
+  if (Array.isArray(signals.notes)) {
+    signals.notes.forEach(n => {
+      if (n && !A._overrideNotes.some(x => x === n)) A._overrideNotes.push('Protocol signal: ' + n);
+    });
+  }
+}
+
+// ── ASSUMPTION LOG (Word .docx) ───────────────────────
+async function generateAssumptionLog() {
+  try {
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            AlignmentType, WidthType, ShadingType, BorderStyle, HeadingLevel } = docx;
+
+    const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    const studyName = A.study_name || 'Unknown Study';
+    const sponsor   = A.sponsor    || '—';
+    const phase     = A.phase      || '—';
+    const totalMos  = (Number(A.startup_mo)||0)+(Number(A.enroll_mo)||0)+(Number(A.treat_mo)||0)+(Number(A.followup_mo)||0)+(Number(A.closeout_mo)||0);
+
+    const border = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
+    const borders = { top: border, bottom: border, left: border, right: border };
+    const hdrFill = { fill: '1B6BF5', type: ShadingType.CLEAR };
+    const altFill = { fill: 'F0F4FF', type: ShadingType.CLEAR };
+
+    function hdrCell(text, w) {
+      return new TableCell({
+        borders, width: { size: w, type: WidthType.DXA },
+        shading: hdrFill,
+        margins: { top: 80, bottom: 80, left: 120, right: 120 },
+        children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: 'FFFFFF', font: 'Arial', size: 18 })] })]
+      });
+    }
+    function dataCell(text, w, shade) {
+      return new TableCell({
+        borders, width: { size: w, type: WidthType.DXA },
+        shading: shade ? altFill : undefined,
+        margins: { top: 70, bottom: 70, left: 120, right: 120 },
+        children: [new Paragraph({ children: [new TextRun({ text: String(text ?? '—'), font: 'Arial', size: 18 })] })]
+      });
+    }
+
+    const GROUPS_ORDER = ['Study Identity','Timeline','Sites & Subjects','Regulatory','Monitoring','PM & Safety','Financial','Team Salaries','OpEx'];
+
+    function formatVal(field, val) {
+      if (val === null || val === undefined || val === '') return '—';
+      if (field.t === 'number') {
+        const n = Number(val);
+        if (isNaN(n)) return String(val);
+        // Dollar fields
+        if (['tigermed_cost','sal_charlie','sal_zach','sal_almas','sal_didar','sal_alex','sal_alexander','sal_shynar',
+             'kz_ops_mo','insurance_mo','tech_mo','travel_m1','legal_m1','audit_annual'].includes(field.k)) {
+          return '$' + n.toLocaleString();
+        }
+        if (['markup','clin_upfront','ciprian_pct'].includes(field.k)) return (n * 100).toFixed(1) + '%';
+        return n.toLocaleString();
+      }
+      return String(val);
+    }
+
+    function sourceLabel(k) {
+      if (A._overrideNotes && A._overrideNotes.some(note => note.toLowerCase().includes(k.replace(/_/g,' ')))) return 'Protocol signal';
+      const extracted = ['study_name','sponsor','phase','indication','start_mo','start_yr',
+        'startup_mo','enroll_mo','treat_mo','followup_mo','closeout_mo','subj_enroll','ec_init','tigermed_cost'];
+      if (extracted.includes(k)) return 'Extracted';
+      return 'Formula default';
+    }
+
+    const sections_content = [];
+
+    // Title block
+    sections_content.push(
+      new Paragraph({ children: [new TextRun({ text: 'Vantage Pricing Engine', font: 'Arial', size: 36, bold: true, color: '1B6BF5' })], spacing: { after: 60 } }),
+      new Paragraph({ children: [new TextRun({ text: 'Assumption Log', font: 'Arial', size: 28, bold: true, color: '1A1A2E' })], spacing: { after: 60 } }),
+      new Paragraph({ children: [new TextRun({ text: studyName, font: 'Arial', size: 22, bold: true, color: '333333' })], spacing: { after: 40 } }),
+      new Paragraph({ children: [new TextRun({ text: `Sponsor: ${sponsor}   |   Phase: ${phase}   |   Duration: ${totalMos} months`, font: 'Arial', size: 18, color: '555555' })], spacing: { after: 40 } }),
+      new Paragraph({ children: [new TextRun({ text: `Generated: ${today}`, font: 'Arial', size: 18, color: '888888' })], spacing: { after: 300 } }),
+    );
+
+    // One table per group
+    for (const grpName of GROUPS_ORDER) {
+      const fields = FIELDS.filter(f => f.grp === grpName);
+      if (!fields.length) continue;
+
+      sections_content.push(
+        new Paragraph({
+          children: [new TextRun({ text: grpName, font: 'Arial', size: 22, bold: true, color: '1B6BF5' })],
+          border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '1B6BF5', space: 2 } },
+          spacing: { before: 300, after: 120 }
+        })
+      );
+
+      const rows = [
+        new TableRow({ children: [hdrCell('Assumption', 3600), hdrCell('Value', 2160), hdrCell('Source', 1800), hdrCell('Notes', 1800)] })
+      ];
+
+      fields.forEach((f, i) => {
+        const val = A[f.k];
+        const src = sourceLabel(f.k);
+        const note = f.note || '';
+        rows.push(new TableRow({
+          children: [
+            dataCell(f.lbl, 3600, i % 2 === 0),
+            dataCell(formatVal(f, val), 2160, i % 2 === 0),
+            dataCell(src, 1800, i % 2 === 0),
+            dataCell(note, 1800, i % 2 === 0),
+          ]
+        }));
+      });
+
+      sections_content.push(new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [3600,2160,1800,1800], rows }));
+    }
+
+    // Override notes section
+    if (A._overrideNotes && A._overrideNotes.length > 0) {
+      sections_content.push(
+        new Paragraph({
+          children: [new TextRun({ text: 'Protocol Signal Overrides', font: 'Arial', size: 22, bold: true, color: '1B6BF5' })],
+          border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '1B6BF5', space: 2 } },
+          spacing: { before: 300, after: 120 }
+        }),
+        new Paragraph({ children: [new TextRun({ text: 'The following formula defaults were overridden based on explicit protocol language:', font: 'Arial', size: 18, color: '555555' })], spacing: { after: 120 } })
+      );
+      A._overrideNotes.forEach((note, i) => {
+        sections_content.push(new Paragraph({
+          children: [
+            new TextRun({ text: `${i + 1}. `, font: 'Arial', size: 18, bold: true }),
+            new TextRun({ text: note, font: 'Arial', size: 18 })
+          ],
+          spacing: { after: 80 }
+        }));
+      });
+    }
+
+    // Footer note
+    sections_content.push(
+      new Paragraph({ children: [], spacing: { before: 400 } }),
+      new Paragraph({
+        children: [new TextRun({ text: 'This document is auto-generated by the Vantage Pricing Engine. All assumptions should be reviewed and validated by a qualified CRA or clinical operations lead before use in sponsor proposals.', font: 'Arial', size: 16, color: '888888', italics: true })],
+        spacing: { before: 80 }
+      })
+    );
+
+    const doc = new Document({
+      sections: [{
+        properties: {
+          page: {
+            size: { width: 12240, height: 15840 },
+            margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 }
+          }
+        },
+        children: sections_content
+      }]
+    });
+
+    const buf = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(buf);
+    const a = document.createElement('a');
+    const safeName = (A.study_name || 'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
+    a.href = url;
+    a.download = 'Vantage_Assumption_Log_' + safeName + '.docx';
+    a.click();
+    URL.revokeObjectURL(url);
+    console.log('[Vantage] Assumption log downloaded.');
+  } catch(err) {
+    console.warn('[Vantage] Assumption log generation failed (non-fatal):', err.message);
+  }
 }
 
 // ── HELPERS ──────────────────────────────────────────
@@ -1277,6 +1593,8 @@ async function generateModel(){
     const fname = 'Vantage_Pricing_'+(A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)+'.xlsx';
     a.href=url; a.download=fname; a.click();
     URL.revokeObjectURL(url);
+    // Generate assumption log Word doc (non-blocking)
+    await generateAssumptionLog();
     // Done screen — use server-computed mgmtFee so it matches Excel exactly
     const serverMgmt = data.mgmtFee || null;
     const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate(serverMgmt);
