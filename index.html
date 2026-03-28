@@ -1,5 +1,5 @@
-<!-- vantage-v33 -->
-<!-- Vantage Pricing Engine v13b - 2026-03-28 -->
+<!-- vantage-v34 -->
+<!-- Vantage Pricing Engine v13c - 2026-03-28 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+
 <style>
 /* ── DESIGN TOKENS ─────────────────────────────────────────────── */
 :root {
@@ -1198,7 +1198,7 @@ function applySignalOverrides(signals) {
   }
 }
 
-// ── ASSUMPTION LOG (Word .docx) ───────────────────────
+// ── ASSUMPTION LOG (Word .docx via JSZip XML) ────────
 let _assumptionLogBlob = null;
 let _assumptionLogName = '';
 
@@ -1207,11 +1207,215 @@ async function generateAssumptionLog() {
   const logBtn = document.getElementById('logBtn');
   if (logBtn) { logBtn.disabled = true; logBtn.textContent = '⏳ Building log…'; }
   try {
-    // docx@8.5.0 UMD build registers as window.docx
-    const docxLib = window.docx;
-    if (!docxLib || !docxLib.Document) throw new Error('docx library not loaded — check CDN');
-    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-            WidthType, ShadingType, BorderStyle } = docxLib;
+    // Build .docx from scratch using JSZip — no external library needed.
+    // A .docx is a ZIP of XML files conforming to OOXML spec.
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    const today = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+    const studyName = A.study_name || 'Unknown Study';
+    const sponsor   = A.sponsor    || '—';
+    const phase     = A.phase      || '—';
+    const totalMos  = (Number(A.startup_mo)||0)+(Number(A.enroll_mo)||0)+(Number(A.treat_mo)||0)+(Number(A.followup_mo)||0)+(Number(A.closeout_mo)||0);
+
+    // ── XML helpers ───────────────────────────────────
+    function para(text, opts={}) {
+      const {bold=false, size=20, color='000000', spaceAfter=100, spaceBefore=0, indent=0} = opts;
+      const rPr = `<w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>`;
+      const pPr = `<w:pPr><w:spacing w:before="${spaceBefore}" w:after="${spaceAfter}"/>${indent?`<w:ind w:left="${indent}"/>`:''}
+        <w:rPr><w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:pPr>`;
+      return `<w:p>${pPr}<w:r>${rPr}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+    }
+
+    function heading(text, opts={}) {
+      const {size=24, color='1B6BF5', spaceBefore=240, spaceAfter=100} = opts;
+      return para(text, {bold:true, size, color, spaceBefore, spaceAfter});
+    }
+
+    function cell(text, opts={}) {
+      const {bold=false, color='1A1A2E', bgColor=null, w=2000} = opts;
+      const shading = bgColor ? `<w:shd w:val="clear" w:color="auto" w:fill="${bgColor}"/>` : '';
+      const rPr = `<w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>`;
+      return `<w:tc>
+        <w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${shading}
+          <w:tcBorders>
+            <w:top w:val="single" w:sz="4" w:color="CCCCCC"/>
+            <w:bottom w:val="single" w:sz="4" w:color="CCCCCC"/>
+            <w:left w:val="single" w:sz="4" w:color="CCCCCC"/>
+            <w:right w:val="single" w:sz="4" w:color="CCCCCC"/>
+          </w:tcBorders>
+          <w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>
+            <w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>
+        </w:tcPr>
+        <w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:pPr>
+          <w:r>${rPr}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>
+      </w:tc>`;
+    }
+
+    function tableRow(cells) {
+      return `<w:tr>${cells.join('')}</w:tr>`;
+    }
+
+    function table(rows) {
+      return `<w:tbl>
+        <w:tblPr>
+          <w:tblW w:w="9072" w:type="dxa"/>
+          <w:tblLayout w:type="fixed"/>
+          <w:tblCellMar>
+            <w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>
+            <w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPr>
+        <w:tblGrid>
+          <w:gridCol w:w="3200"/><w:gridCol w:w="2000"/>
+          <w:gridCol w:w="1800"/><w:gridCol w:w="2072"/>
+        </w:tblGrid>
+        ${rows.join('')}
+      </w:tbl>`;
+    }
+
+    function formatVal(field, val) {
+      if (val === null || val === undefined || val === '') return '—';
+      if (field.t === 'number') {
+        const nv = Number(val);
+        if (isNaN(nv)) return String(val);
+        const dollarKeys = ['tigermed_cost','sal_charlie','sal_zach','sal_almas','sal_didar',
+          'sal_alex','sal_alexander','sal_shynar','kz_ops_mo','insurance_mo','tech_mo','travel_m1','legal_m1','audit_annual'];
+        if (dollarKeys.includes(field.k)) return '$' + nv.toLocaleString();
+        if (['markup','clin_upfront','ciprian_pct'].includes(field.k)) return (nv*100).toFixed(1)+'%';
+        return nv.toLocaleString();
+      }
+      return String(val);
+    }
+
+    function sourceLabel(k) {
+      if (A._overrideNotes && A._overrideNotes.some(n => n.toLowerCase().includes(k.replace(/_/g,' ')))) return 'Protocol signal';
+      const extracted = ['study_name','sponsor','phase','indication','start_mo','start_yr',
+        'startup_mo','enroll_mo','treat_mo','followup_mo','closeout_mo','subj_enroll','ec_init','tigermed_cost'];
+      return extracted.includes(k) ? 'Extracted' : 'Formula default';
+    }
+
+    // ── Build document body ───────────────────────────
+    const bodyParts = [];
+
+    // Title block
+    bodyParts.push(para('Vantage Pricing Engine — Assumption Log', {bold:true, size:32, color:'1B6BF5', spaceAfter:80}));
+    bodyParts.push(para(studyName, {bold:true, size:24, color:'1A1A2E', spaceAfter:60}));
+    bodyParts.push(para(`Sponsor: ${sponsor}   |   Phase: ${phase}   |   Duration: ${totalMos} months`, {size:18, color:'555555', spaceAfter:60}));
+    bodyParts.push(para(`Generated: ${today}`, {size:18, color:'888888', spaceAfter:300}));
+
+    const GROUPS_ORDER = ['Study Identity','Timeline','Sites & Subjects','Regulatory','Monitoring','PM & Safety','Financial','Team Salaries','OpEx'];
+
+    for (const grpName of GROUPS_ORDER) {
+      const fields = FIELDS.filter(f => f.grp === grpName);
+      if (!fields.length) continue;
+
+      bodyParts.push(heading(grpName, {size:22, spaceBefore:300, spaceAfter:100}));
+
+      // Header row
+      const hdrRow = tableRow([
+        cell('Assumption', {bold:true, color:'FFFFFF', bgColor:'1B6BF5', w:3200}),
+        cell('Value',      {bold:true, color:'FFFFFF', bgColor:'1B6BF5', w:2000}),
+        cell('Source',     {bold:true, color:'FFFFFF', bgColor:'1B6BF5', w:1800}),
+        cell('Notes',      {bold:true, color:'FFFFFF', bgColor:'1B6BF5', w:2072}),
+      ]);
+
+      const dataRows = fields.map((f, i) => {
+        const bg = i % 2 === 0 ? 'F0F4FF' : null;
+        return tableRow([
+          cell(f.lbl,                  {color:'1A1A2E', bgColor:bg, w:3200}),
+          cell(formatVal(f, A[f.k]),   {color:'1A1A2E', bgColor:bg, w:2000}),
+          cell(sourceLabel(f.k),       {color:'555555', bgColor:bg, w:1800}),
+          cell(f.note || '',           {color:'777777', bgColor:bg, w:2072}),
+        ]);
+      });
+
+      bodyParts.push(table([hdrRow, ...dataRows]));
+    }
+
+    // Override notes section
+    if (A._overrideNotes && A._overrideNotes.length > 0) {
+      bodyParts.push(heading('Protocol Signal Overrides', {size:22, spaceBefore:300, spaceAfter:100}));
+      bodyParts.push(para('The following formula defaults were overridden based on explicit protocol language:', {size:18, color:'555555', spaceAfter:120}));
+      A._overrideNotes.forEach((note, i) => {
+        bodyParts.push(para(`${i+1}. ${note}`, {size:18, spaceAfter:80, indent:360}));
+      });
+    }
+
+    // Footer
+    bodyParts.push(para('', {spaceAfter:200}));
+    bodyParts.push(para('This document is auto-generated by the Vantage Pricing Engine. All assumptions should be reviewed and validated by a qualified CRA or clinical operations lead before use in sponsor proposals.', {size:16, color:'888888', spaceAfter:0}));
+
+    // ── Assemble OOXML ────────────────────────────────
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+  xmlns:v="urn:schemas-microsoft-com:vml"
+  xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:w10="urn:schemas-microsoft-com:office:word"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+  xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+  xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"
+  xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml"
+  xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+  mc:Ignorable="w14 wp14">
+  <w:body>
+    ${bodyParts.join('\n    ')}
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+    const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+    const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr>
+      <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>
+      <w:sz w:val="20"/><w:szCs w:val="20"/>
+    </w:rPr></w:rPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:styleId="Normal" w:default="1">
+    <w:name w:val="Normal"/>
+    <w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/></w:rPr>
+  </w:style>
+</w:styles>`;
+
+    const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`;
+
+    const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+    // ── Pack into ZIP ─────────────────────────────────
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypesXml);
+    zip.file('_rels/.rels', rootRelsXml);
+    zip.file('word/document.xml', documentXml);
+    zip.file('word/styles.xml', stylesXml);
+    zip.file('word/_rels/document.xml.rels', relsXml);
+
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression: 'DEFLATE' });
+    const safeName = (A.study_name || 'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
 
     const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
     const studyName = A.study_name || 'Unknown Study';
@@ -1354,9 +1558,7 @@ async function generateAssumptionLog() {
       }]
     });
 
-    const buf = await Packer.toBlob(doc);
-    const safeName = (A.study_name || 'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
-    _assumptionLogBlob = buf;
+    _assumptionLogBlob = blob;
     _assumptionLogName = 'Vantage_Assumption_Log_' + safeName + '.docx';
     if (logBtn) {
       logBtn.disabled = false;
