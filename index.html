@@ -1,5 +1,5 @@
-<!-- vantage-v32 -->
-<!-- Vantage Pricing Engine v13a - 2026-03-28 -->
+<!-- vantage-v33 -->
+<!-- Vantage Pricing Engine v13b - 2026-03-28 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1207,8 +1207,11 @@ async function generateAssumptionLog() {
   const logBtn = document.getElementById('logBtn');
   if (logBtn) { logBtn.disabled = true; logBtn.textContent = '⏳ Building log…'; }
   try {
+    // docx@8.5.0 UMD build registers as window.docx
+    const docxLib = window.docx;
+    if (!docxLib || !docxLib.Document) throw new Error('docx library not loaded — check CDN');
     const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-            AlignmentType, WidthType, ShadingType, BorderStyle, HeadingLevel } = docx;
+            WidthType, ShadingType, BorderStyle } = docxLib;
 
     const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
     const studyName = A.study_name || 'Unknown Study';
@@ -1361,8 +1364,8 @@ async function generateAssumptionLog() {
     }
     console.log('[Vantage] Assumption log ready.');
   } catch(err) {
-    console.warn('[Vantage] Assumption log generation failed (non-fatal):', err.message);
-    if (logBtn) { logBtn.disabled = false; logBtn.textContent = '⬇ Download Assumption Log (.docx)'; }
+    console.error('[Vantage] Assumption log generation failed:', err.message);
+    if (logBtn) { logBtn.disabled = false; logBtn.textContent = '⚠ Log failed: ' + err.message.slice(0, 60); }
   }
 }
 
