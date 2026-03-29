@@ -1,4 +1,4 @@
-// vantage-v35-word
+// vantage-v37-word
 const JSZip = require('jszip');
 
 exports.handler = async function(event, context) {
@@ -98,6 +98,91 @@ exports.handler = async function(event, context) {
       return extractedKeys.includes(k) ? 'Extracted' : 'Formula default';
     }
 
+    function getRationale(k) {
+      const sites   = Number(A.kz_sites) || 3;
+      const enroll  = Number(A.enroll_mo) || 8;
+      const treat   = Number(A.treat_mo) || 4;
+      const followup= Number(A.followup_mo) || 1;
+      const startup = Number(A.startup_mo) || 4;
+      const closeout= Number(A.closeout_mo) || 2;
+      const total   = startup + enroll + treat + followup + closeout;
+      const subj    = Number(A.subj_enroll) || 30;
+      const phase   = String(A.phase || '');
+      const is3     = /phase\s*3|phase\s*iii/i.test(phase) && !/2b/i.test(phase);
+      const is2     = /phase\s*2|phase\s*ii(?!i)|2b/i.test(phase);
+      const ind     = String(A.indication || '').toLowerCase();
+      const isOnco  = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
+      const isCardio= /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
+      const saeRate = isOnco ? '30%' : isCardio ? '5%' : '10%';
+      const susarRate = isOnco ? '10%' : '5%';
+      const phaseLbl = is3 ? 'Phase 3' : is2 ? 'Phase 2' : 'Phase 1/1b';
+      const map = {
+        study_name:   'Extracted from protocol title page.',
+        sponsor:      'Extracted from protocol title page.',
+        phase:        `Extracted from protocol. Determines phase-tiered formula defaults for monitoring, SAE/SUSAR rates, and timeline.`,
+        indication:   `Extracted from protocol. Determines SAE rate tier: oncology ${saeRate}, cardiology 5%, other 10%.`,
+        est_start:    'Display only — not used in calculations.',
+        start_mo:     'Extracted if explicitly stated in protocol; otherwise defaults to April (month 4).',
+        start_yr:     'Extracted if explicitly stated; otherwise defaults to current year.',
+        startup_mo:   `${startup} months. Covers site selection, CTRA execution, EC and regulatory submissions, SIV, and site activation.`,
+        enroll_mo:    `${enroll} months. Extracted from protocol if explicitly stated. Active patient recruitment window.`,
+        treat_mo:     `${treat} months. Extracted if stated. Last-patient-in to last-patient-treatment-complete.`,
+        followup_mo:  `${followup} months. Post-treatment data collection before database lock.`,
+        closeout_mo:  `${closeout} months. TMF reconciliation, data lock, CSR submission and archiving.`,
+        kz_sites:     `${sites} sites. ${is3 ? 'Phase 3 default = 10.' : is2 ? 'Phase 2 default = 5.' : 'Phase 1/1b default = 3.'} Adjust manually per sponsor scope.`,
+        sites_feas:   `Formula: KZ sites x 2 = ${sites * 2}. Standard practice — assess twice the planned sites as fallback.`,
+        sites_screen: `Formula: KZ sites x 1.5 = ${Math.round(sites * 1.5)}. Sites proceeding from feasibility to screening.`,
+        subj_screen:  `Formula: enrolled x 1.3 = ${Math.round(subj * 1.3)}. ~23% screen failure rate — conservative for oncology inclusion/exclusion criteria.`,
+        subj_enroll:  `${subj} subjects. Extracted from protocol (global randomised/enrolled count).`,
+        ec_init:      'Single submission to Kazakhstan Central Bioethics Commission covers national approval.',
+        ec_annual:    `Formula: CEILING(${total} months / 12) = ${Math.max(1, Math.ceil(total/12))}. One annual progress report per calendar year of active conduct.`,
+        ctra:         `Formula: = KZ sites = ${sites}. One Clinical Trial Research Agreement per initiated site.`,
+        imv_1day:     is3
+          ? `Formula (Ph3): sites x enroll x 0.5 + sites x followup / 6 = ${sites} x ${enroll} x 0.5 + ${sites} x ${followup} / 6 = ${Number(A.imv_1day)||0}.`
+          : is2
+          ? `Formula (Ph2): (treat x 2 + enroll + followup) x sites = (${treat} x 2 + ${enroll} + ${followup}) x ${sites} = ${Number(A.imv_1day)||0}.`
+          : `Formula (Ph1/1b): sites x (enroll + followup) + sites x treat x 0.5 = ${sites} x (${enroll} + ${followup}) + ${sites} x ${treat} x 0.5 = ${Number(A.imv_1day)||0}.`,
+        imv_2day:     is2
+          ? `Formula (Ph2): CEILING(treat / 2) x sites = CEILING(${treat} / 2) x ${sites} = ${Number(A.imv_2day)||0}. Extended visits for source data verification.`
+          : `0. Not applicable for ${phaseLbl} under Tigermed methodology.`,
+        rmv:          is3
+          ? `Formula (Ph3): mirrors IMV = ${Number(A.rmv)||0}.`
+          : is2
+          ? `Formula (Ph2): sites x (enroll + treat + followup) x 0.5 = ${sites} x (${enroll} + ${treat} + ${followup}) x 0.5 = ${Number(A.rmv)||0}.`
+          : `Formula (Ph1/1b): mirrors IMV = ${Number(A.rmv)||0}.`,
+        siv:          `Formula: = KZ sites = ${sites}. One site initiation visit per site before first patient enrolled (GCP requirement).`,
+        cov:          `Formula: = KZ sites = ${sites}. One close-out visit per site at study completion.`,
+        co_mon:       `Formula: = KZ sites = ${sites}. Senior CRA accompanies primary monitor for quality oversight.`,
+        tmf_qc:       `Formula: ROUND(${total} / 6) = ${Math.max(1, Math.round(total/6))}. TMF quality check every 6 months.`,
+        sae:          `Formula: subjects x rate x 3 = ${subj} x ${saeRate} x 3 = ${Number(A.sae)||0}. ${isOnco ? 'Oncology rate.' : isCardio ? 'Cardiology rate.' : 'Standard rate.'} x3 multiplier for follow-up reports per event.`,
+        susar:        `Formula: subjects x rate = ${subj} x ${susarRate} = ${Number(A.susar)||0}. ${isOnco ? 'Oncology rate (10%).' : 'Standard rate (5%).'}`,
+        sig_issues:   `Formula: MAX(3, ROUND(sites x 0.5)) = ${Math.max(3, Math.round(sites * 0.5))}. Floor of 3 applied regardless of site count.`,
+        tc_sponsor:   `Formula: total months x 2 = ${total} x 2 = ${Number(A.tc_sponsor)||0}. Biweekly cadence throughout study.`,
+        tc_internal:  `Formula: TC Sponsor x 2 = ${Number(A.tc_sponsor)||0} x 2 = ${Number(A.tc_internal)||0}. Internal calls run at double sponsor cadence.`,
+        site_pay:     `Formula: sites x CEILING(total / 3) = ${sites} x ${Math.ceil(total/3)} = ${Number(A.site_pay)||0}. Quarterly payments per site.`,
+        periodic_saf: `Formula: MAX(1, CEILING(${total} / 12)) = ${Math.max(1, Math.ceil(total/12))}. One periodic safety report per year of conduct.`,
+        tigermed_cost:'Extracted from Tigermed proposal Budget Summary / Professional Service Fee page.',
+        markup:       `${((Number(A.markup)||1.45)*100).toFixed(0)}% markup. Clinical revenue = Tigermed cost x markup. Adjust based on cash flow modelling.`,
+        clin_upfront: `${((Number(A.clin_upfront)||0.2)*100).toFixed(0)}% billed at contract signing to cover mobilisation. Remainder spread monthly over enrollment.`,
+        kz_ops_mo:    'Fixed in-country operations cost (local office, comms, incidental site support). Active during startup and enrollment.',
+        sal_charlie:  'Monthly salary allocation. Set per study based on expected involvement level.',
+        sal_zach:     'Monthly salary allocation. Set per study based on expected involvement level.',
+        sal_almas:    'Monthly salary allocation. Set per study based on expected involvement level.',
+        sal_didar:    'Monthly salary allocation. Set per study based on expected involvement level.',
+        sal_alex:     'Monthly salary allocation. Set per study based on expected involvement level.',
+        sal_alexander:'Monthly salary allocation. Set per study based on expected involvement level.',
+        sal_shynar:   'Monthly salary allocation. Set per study based on expected involvement level.',
+        ciprian_pct:  '0.5% of all revenue per month. Commission applied to management fee and clinical revenue.',
+        insurance_mo: 'Professional indemnity and general liability insurance.',
+        tech_mo:      'Technology stack: CTMS, data management tools, and communication platforms.',
+        travel_m1:    'Initial travel and accommodation for site visits and sponsor meetings.',
+        legal_m1:     'Legal review of CTRA, ICF, and regulatory submission documents.',
+        audit_annual: 'Annual compliance audit. Triggers every 12 months of study conduct.',
+      };
+      return map[k] || '';
+    }
+
+
     // ── XML helpers ──────────────────────────────────
     function para(text, opts = {}) {
       const { bold=false, size=20, color='000000', spaceAfter=100, spaceBefore=0, indent=0 } = opts;
@@ -143,8 +228,8 @@ exports.handler = async function(event, context) {
           <w:tblLayout w:type="fixed"/>
         </w:tblPr>
         <w:tblGrid>
-          <w:gridCol w:w="3200"/><w:gridCol w:w="2000"/>
-          <w:gridCol w:w="1800"/><w:gridCol w:w="2072"/>
+          <w:gridCol w:w="2200"/><w:gridCol w:w="1400"/>
+          <w:gridCol w:w="1200"/><w:gridCol w:w="4272"/>
         </w:tblGrid>
         ${rows.join('\n')}
       </w:tbl>`;
@@ -175,18 +260,18 @@ exports.handler = async function(event, context) {
       const rows = [];
       // Header row
       rows.push(trXml([
-        tcXml('Assumption', {bold:true, color:'FFFFFF', bg:'1B6BF5', w:3200}),
-        tcXml('Value',      {bold:true, color:'FFFFFF', bg:'1B6BF5', w:2000}),
-        tcXml('Source',     {bold:true, color:'FFFFFF', bg:'1B6BF5', w:1800}),
-        tcXml('Notes',      {bold:true, color:'FFFFFF', bg:'1B6BF5', w:2072}),
+        tcXml('Assumption',            {bold:true, color:'FFFFFF', bg:'1B6BF5', w:2200}),
+        tcXml('Value',                 {bold:true, color:'FFFFFF', bg:'1B6BF5', w:1400}),
+        tcXml('Source',                {bold:true, color:'FFFFFF', bg:'1B6BF5', w:1200}),
+        tcXml('Derivation & Rationale',{bold:true, color:'FFFFFF', bg:'1B6BF5', w:4272}),
       ]));
       fields.forEach((f, i) => {
         const bg = i % 2 === 0 ? 'F0F4FF' : null;
         rows.push(trXml([
-          tcXml(f.lbl,                  {color:'1A1A2E', bg, w:3200}),
-          tcXml(formatVal(f, A[f.k]),   {color:'1A1A2E', bg, w:2000}),
-          tcXml(sourceLabel(f.k),       {color:'555555', bg, w:1800}),
-          tcXml(f.note || '',           {color:'777777', bg, w:2072}),
+          tcXml(f.lbl,                  {color:'1A1A2E', bg, w:2200}),
+          tcXml(formatVal(f, A[f.k]),   {color:'1A1A2E', bg, w:1400}),
+          tcXml(sourceLabel(f.k),       {color:'555555', bg, w:1200}),
+          tcXml(getRationale(f.k),      {color:'333333', bg, w:4272}),
         ]));
       });
       body.push(tableXml(rows));
