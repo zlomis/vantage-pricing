@@ -1,4 +1,4 @@
-// vantage-v39-word
+// vantage-v40-word
 const JSZip = require('jszip');
 
 exports.handler = async function(event, context) {
@@ -20,7 +20,6 @@ exports.handler = async function(event, context) {
       {k:"sponsor",       lbl:"Sponsor",                                    grp:"Study Identity",   t:"text"},
       {k:"phase",         lbl:"Phase",                                      grp:"Study Identity",   t:"text"},
       {k:"indication",    lbl:"Indication / Disease Area",                  grp:"Study Identity",   t:"text"},
-      {k:"est_start",     lbl:"Estimated Start",                            grp:"Study Identity",   t:"text"},
       {k:"start_mo",      lbl:"Trial Start Month (1=Jan 12=Dec)",           grp:"Timeline",         t:"number", note:"e.g. 4 = April"},
       {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", note:"Four-digit year"},
       {k:"startup_mo",    lbl:"Start-Up Phase (months)",                    grp:"Timeline",         t:"number", note:"Site selection, regulatory submissions"},
@@ -61,7 +60,6 @@ exports.handler = async function(event, context) {
       {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number"},
       {k:"sal_alexander", lbl:"Alexander salary monthly USD",               grp:"Team Salaries",    t:"number"},
       {k:"sal_shynar",    lbl:"Shynar salary monthly USD",                  grp:"Team Salaries",    t:"number"},
-      {k:"ciprian_pct",   lbl:"Ciprian Commission Rate",                    grp:"OpEx",             t:"number", note:"Applied to all revenue each month"},
       {k:"insurance_mo",  lbl:"Insurance monthly USD",                      grp:"OpEx",             t:"number"},
       {k:"tech_mo",       lbl:"Technology Stack monthly USD",               grp:"OpEx",             t:"number"},
       {k:"travel_m1",     lbl:"Travel and Accommodation Month 1",           grp:"OpEx",             t:"number"},
@@ -71,7 +69,7 @@ exports.handler = async function(event, context) {
 
     const dollarKeys = ['tigermed_cost','sal_charlie','sal_zach','sal_almas','sal_didar',
       'sal_alex','sal_alexander','sal_shynar','kz_ops_mo','insurance_mo','tech_mo','travel_m1','legal_m1','audit_annual'];
-    const pctKeys = ['markup','clin_upfront','ciprian_pct'];
+    const pctKeys = ['markup','clin_upfront'];
     const extractedKeys = ['study_name','sponsor','phase','indication','start_mo','start_yr',
       'startup_mo','enroll_mo','treat_mo','followup_mo','closeout_mo','subj_enroll','ec_init','tigermed_cost'];
 
@@ -163,7 +161,7 @@ exports.handler = async function(event, context) {
         periodic_saf: `Formula: MAX(1, CEILING(${total} / 12)) = ${Math.max(1, Math.ceil(total/12))}. One periodic safety report per year of conduct.`,
         tigermed_cost:'Extracted from Tigermed proposal Budget Summary / Professional Service Fee page.',
         markup:       `${((Number(A.markup)||1.45)*100).toFixed(0)}% markup. Clinical revenue = Tigermed cost x markup. Adjust based on cash flow modelling.`,
-        clin_upfront: `${((Number(A.clin_upfront)||0.2)*100).toFixed(0)}% billed at contract signing to cover mobilisation. Remainder spread monthly over enrollment.`,
+        clin_upfront: `${((Number(A.clin_upfront)||0.1)*100).toFixed(0)}% billed at contract signing to cover mobilisation. Remainder spread monthly over enrollment.`,
         kz_ops_mo:    'Fixed in-country operations cost (local office, comms, incidental site support). Active during startup and enrollment.',
         sal_charlie:  'Monthly salary allocation. Set per study based on expected involvement level.',
         sal_zach:     'Monthly salary allocation. Set per study based on expected involvement level.',
@@ -414,7 +412,7 @@ exports.handler = async function(event, context) {
     body.push(para(`Sponsor TCs = total months x 2 = ${total_kd} x 2 = ${Number(A.tc_sponsor)||0} (biweekly cadence). Internal CRO TCs = TC Sponsor x 2 = ${Number(A.tc_internal)||0}. Site payments = ${sites_kd} sites x CEILING(${total_kd}/3) = ${Number(A.site_pay)||0} (quarterly per site).`, {size:18, color:'333333', spaceAfter:120}));
 
     body.push(para('Financial Assumptions', {bold:true, size:20, color:'1A1A2E', spaceAfter:60}));
-    body.push(para(`Management fee of $${Math.round(fin.mgmtFee).toLocaleString('en-US')} computed from the Vantage Management Services fee schedule (8 service categories, unit prices benchmarked against Kazakhstan CRO market rates at 35-45% below Western Europe). Clinical markup of ${((Number(A.markup)||1.45)*100).toFixed(0)}% applied to Tigermed clinical cost base. Clinical upfront of ${((Number(A.clin_upfront)||0.2)*100).toFixed(0)}% billed at contract signing.`, {size:18, color:'333333', spaceAfter:200}));
+    body.push(para(`Management fee of $${Math.round(fin.mgmtFee).toLocaleString('en-US')} computed from the Vantage Management Services fee schedule (8 service categories, unit prices benchmarked against Kazakhstan CRO market rates at 35-45% below Western Europe). Clinical markup of ${((Number(A.markup)||1.45)*100).toFixed(0)}% applied to Tigermed clinical cost base. Clinical upfront of ${((Number(A.clin_upfront)||0.1)*100).toFixed(0)}% billed at contract signing.`, {size:18, color:'333333', spaceAfter:200}));
 
     // ── 5. Milestone Payment Schedule ────────────────
     body.push(para('Milestone Payment Schedule', {bold:true, size:24, color:'1B6BF5', spaceBefore:200, spaceAfter:100}));

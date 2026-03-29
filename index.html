@@ -1,5 +1,5 @@
-<!-- vantage-v39 -->
-<!-- Vantage Pricing Engine v15 - 2026-03-29 -->
+<!-- vantage-v40 -->
+<!-- Vantage Pricing Engine v15a - 2026-03-29 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -775,7 +775,7 @@ const FIELDS = [
   {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number", def:null},
   {k:"tigermed_cost", lbl:"Tigermed CRO Quote (USD)",                   grp:"Financial",        t:"number", def:4134072, note:"From Budget Summary page"},
   {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", def:1.45,   note:"Revenue = Tigermed x Markup, e.g. 1.45"},
-  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.2,    note:"Portion billed at contract signing"},
+  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.1,    note:"Portion billed at contract signing"},
   {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", def:2500,   note:"Active during startup and enrollment"},
   {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number", def:4000},
   {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number", def:4000},
@@ -1034,7 +1034,7 @@ async function extractFromSynopsis(fileContent,fileType){
     '',
     '=== FIXED DEFAULTS - always return these exact values ===',
     '- markup: 1.45',
-    '- clin_upfront: 0.2',
+    '- clin_upfront: 0.1',
     '- kz_ops_mo: 2500',
     '',
     'Return JSON only. No prose, no markdown, no code fences.'
