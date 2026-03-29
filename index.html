@@ -1,5 +1,5 @@
-<!-- vantage-v38 -->
-<!-- Vantage Pricing Engine v14a - 2026-03-29 -->
+<!-- vantage-v39 -->
+<!-- Vantage Pricing Engine v15 - 2026-03-29 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1207,10 +1207,29 @@ async function generateAssumptionLog() {
   const logBtn = document.getElementById('logBtn');
   if (logBtn) { logBtn.disabled = true; logBtn.textContent = '⏳ Building log…'; }
   try {
+    // Generate study context narrative via Claude API
+    let studyContext = '';
+    try {
+      const ctxResp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          system: 'You are a clinical trial analyst at Vantage Clinical Trials, a Kazakhstan CRO. Write a concise 3-4 sentence study context paragraph for an assumption log. Cover: what the study is testing, patient population, Vantage\'s scope (Kazakhstan only), and any key operational characteristics (e.g. dose escalation structure, high-toxicity regimen, safety committee type) that affect the pricing assumptions. Be factual and specific. No bullet points, plain prose only.',
+          messages: [{ role: 'user', content: `Study: ${A.study_name || 'Unknown'}\nSponsor: ${A.sponsor || 'Unknown'}\nPhase: ${A.phase || 'Unknown'}\nIndication: ${A.indication || 'Unknown'}\nSafety committee: ${A._safetyCommittee || 'not specified'}\nSites: ${A.kz_sites || 3}\nSubjects: ${A.subj_enroll || 30}\nDuration: ${(Number(A.startup_mo)||0)+(Number(A.enroll_mo)||0)+(Number(A.treat_mo)||0)+(Number(A.followup_mo)||0)+(Number(A.closeout_mo)||0)} months\n\nWrite the study context paragraph.` }]
+        })
+      });
+      if (ctxResp.ok) {
+        const ctxData = await ctxResp.json();
+        studyContext = (ctxData.content || []).map(b => b.text || '').join('').trim();
+      }
+    } catch(e) { console.warn('[Vantage] Study context generation failed (non-fatal):', e.message); }
+
     const resp = await fetch('/.netlify/functions/generate-word', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(A)
+      body: JSON.stringify({ ...A, _studyContext: studyContext })
     });
     if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || 'Server error ' + resp.status); }
     const data = await resp.json();
