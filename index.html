@@ -1,5 +1,5 @@
-<!-- vantage-v37 -->
-<!-- Vantage Pricing Engine v14 - 2026-03-29 -->
+<!-- vantage-v38 -->
+<!-- Vantage Pricing Engine v14a - 2026-03-29 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1222,8 +1222,7 @@ async function generateAssumptionLog() {
     if (logBtn) {
       logBtn.disabled = false;
       logBtn.className = 'btn-primary';
-      logBtn.style.opacity = '1';
-      logBtn.style.cursor = 'pointer';
+      logBtn.removeAttribute('style');
       logBtn.textContent = '⬇ Download Assumption Log (.docx)';
     }
     console.log('[Vantage] Assumption log ready.');
