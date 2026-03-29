@@ -1,11 +1,12 @@
-<!-- vantage-v40 -->
-<!-- Vantage Pricing Engine v15a - 2026-03-29 -->
+<!-- vantage-v44 -->
+<!-- Vantage Pricing Engine v16 - 2026-03-29 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vantage Pricing Engine</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231B6BF5'/><text x='16' y='23' font-family='Arial' font-size='20' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
@@ -773,7 +774,8 @@ const FIELDS = [
   {k:"tc_internal",   lbl:"Internal CRO Project TCs",                   grp:"PM & Safety",      t:"number", def:null},
   {k:"site_pay",      lbl:"Site Payments Processed",                    grp:"PM & Safety",      t:"number", def:null,   note:"Quarterly x sites"},
   {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number", def:null},
-  {k:"tigermed_cost", lbl:"Tigermed CRO Quote (USD)",                   grp:"Financial",        t:"number", def:4134072, note:"From Budget Summary page"},
+  {k:"tigermed_ms",     lbl:"Tigermed Target — Total Management Services (USD)", grp:"Financial", t:"number", def:null, note:"From Tigermed proposal — enter manually"},
+  {k:"tigermed_clinical",lbl:"Tigermed Target — Total Clinical Trial Services (USD)", grp:"Financial", t:"number", def:null, note:"From Tigermed proposal — enter manually"},
   {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", def:1.45,   note:"Revenue = Tigermed x Markup, e.g. 1.45"},
   {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.1,    note:"Portion billed at contract signing"},
   {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", def:2500,   note:"Active during startup and enrollment"},
@@ -1021,10 +1023,6 @@ async function extractFromSynopsis(fileContent,fileType){
     '',
     'REGULATORY:',
     '- ec_init: number of EC/IRB submissions. Always return 1 for Kazakhstan.',
-    '',
-    'FINANCIALS:',
-    '- tigermed_cost: Tigermed Professional Service Fee in USD if present.',
-    '  Look for "Budget Summary", "Professional Service Fee", "Total CRO Fee". Return null if not found.',
     '',
     '=== DO NOT RETURN THESE FIELDS - THEY ARE COMPUTED AUTOMATICALLY ===',
     'imv_1day, imv_2day, rmv, siv, cov, co_mon, tmf_qc,',

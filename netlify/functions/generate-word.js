@@ -1,4 +1,4 @@
-// vantage-v40-word
+// vantage-v44-word
 const JSZip = require('jszip');
 
 exports.handler = async function(event, context) {
@@ -49,7 +49,8 @@ exports.handler = async function(event, context) {
       {k:"tc_internal",   lbl:"Internal CRO Project TCs",                   grp:"PM & Safety",      t:"number"},
       {k:"site_pay",      lbl:"Site Payments Processed",                    grp:"PM & Safety",      t:"number", note:"Quarterly x sites"},
       {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number"},
-      {k:"tigermed_cost", lbl:"Tigermed CRO Quote (USD)",                   grp:"Financial",        t:"number", note:"From Budget Summary page"},
+      {k:"tigermed_ms",      lbl:"Tigermed Target — Total Management Services (USD)",    grp:"Financial", t:"number", note:"From Tigermed proposal — enter manually"},
+      {k:"tigermed_clinical", lbl:"Tigermed Target — Total Clinical Trial Services (USD)", grp:"Financial", t:"number", note:"From Tigermed proposal — enter manually"},
       {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", note:"Revenue = Tigermed x Markup"},
       {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", note:"Portion billed at contract signing"},
       {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", note:"Active during startup and enrollment"},
@@ -67,11 +68,16 @@ exports.handler = async function(event, context) {
       {k:"audit_annual",  lbl:"Annual Compliance Audit",                    grp:"OpEx",             t:"number", note:"Fires every 12 months"},
     ];
 
-    const dollarKeys = ['tigermed_cost','sal_charlie','sal_zach','sal_almas','sal_didar',
+    // Add referral partner row only if a commission rate is set
+    if (Number(A.ciprian_pct) > 0) {
+      FIELDS.push({k:"ciprian_pct", lbl:"Referral Partner Commission Rate", grp:"OpEx", t:"number", note:"Applied to all revenue each month"});
+    }
+
+    const dollarKeys = ['tigermed_ms','tigermed_clinical','sal_charlie','sal_zach','sal_almas','sal_didar',
       'sal_alex','sal_alexander','sal_shynar','kz_ops_mo','insurance_mo','tech_mo','travel_m1','legal_m1','audit_annual'];
-    const pctKeys = ['markup','clin_upfront'];
+    const pctKeys = ['markup','clin_upfront','ciprian_pct'];
     const extractedKeys = ['study_name','sponsor','phase','indication','start_mo','start_yr',
-      'startup_mo','enroll_mo','treat_mo','followup_mo','closeout_mo','subj_enroll','ec_init','tigermed_cost'];
+      'startup_mo','enroll_mo','treat_mo','followup_mo','closeout_mo','subj_enroll','ec_init'];
 
     function esc(s) {
       return String(s == null ? '' : s)
@@ -131,7 +137,7 @@ exports.handler = async function(event, context) {
         sites_feas:   `Formula: KZ sites x 2 = ${sites * 2}. Standard practice — assess twice the planned sites as fallback.`,
         sites_screen: `Formula: KZ sites x 1.5 = ${Math.round(sites * 1.5)}. Sites proceeding from feasibility to screening.`,
         subj_screen:  `Formula: enrolled x 1.3 = ${Math.round(subj * 1.3)}. ~23% screen failure rate — conservative for oncology inclusion/exclusion criteria.`,
-        subj_enroll:  `${subj} subjects. Extracted from protocol (global randomised/enrolled count).`,
+        subj_enroll:  `${subj} subjects. Extracted from protocol (global randomized/enrolled count).`,
         ec_init:      'Single submission to Kazakhstan Central Bioethics Commission covers national approval.',
         ec_annual:    `Formula: CEILING(${total} months / 12) = ${Math.max(1, Math.ceil(total/12))}. One annual progress report per calendar year of active conduct.`,
         ctra:         `Formula: = KZ sites = ${sites}. One Clinical Trial Research Agreement per initiated site.`,
@@ -159,7 +165,12 @@ exports.handler = async function(event, context) {
         tc_internal:  `Formula: TC Sponsor x 2 = ${Number(A.tc_sponsor)||0} x 2 = ${Number(A.tc_internal)||0}. Internal calls run at double sponsor cadence.`,
         site_pay:     `Formula: sites x CEILING(total / 3) = ${sites} x ${Math.ceil(total/3)} = ${Number(A.site_pay)||0}. Quarterly payments per site.`,
         periodic_saf: `Formula: MAX(1, CEILING(${total} / 12)) = ${Math.max(1, Math.ceil(total/12))}. One periodic safety report per year of conduct.`,
-        tigermed_cost:'Extracted from Tigermed proposal Budget Summary / Professional Service Fee page.',
+        tigermed_ms:       (A.tigermed_ms === null || A.tigermed_ms === undefined || A.tigermed_ms === 0)
+          ? 'Not yet entered. Populate from Tigermed proposal when available — maps to Sponsor Output tab C2.'
+          : 'Entered manually from Tigermed proposal. Populates Assumptions B101 and Sponsor Output C2.',
+        tigermed_clinical: (A.tigermed_clinical === null || A.tigermed_clinical === undefined || A.tigermed_clinical === 0)
+          ? 'Not yet entered. Populate from Tigermed proposal when available — maps to Sponsor Output tab C3.'
+          : 'Entered manually from Tigermed proposal. Populates Assumptions B102 and Sponsor Output C3.',
         markup:       `${((Number(A.markup)||1.45)*100).toFixed(0)}% markup. Clinical revenue = Tigermed cost x markup. Adjust based on cash flow modelling.`,
         clin_upfront: `${((Number(A.clin_upfront)||0.1)*100).toFixed(0)}% billed at contract signing to cover mobilisation. Remainder spread monthly over enrollment.`,
         kz_ops_mo:    'Fixed in-country operations cost (local office, comms, incidental site support). Active during startup and enrollment.',
@@ -176,6 +187,7 @@ exports.handler = async function(event, context) {
         travel_m1:    'Initial travel and accommodation for site visits and sponsor meetings.',
         legal_m1:     'Legal review of CTRA, ICF, and regulatory submission documents.',
         audit_annual: 'Annual compliance audit. Triggers every 12 months of study conduct.',
+        ciprian_pct:  `${((Number(A.ciprian_pct)||0)*100).toFixed(1)}% of all revenue per month. Referral partner commission — study-specific, applied only when a referral agreement is in place.`,
       };
       return map[k] || '';
     }
