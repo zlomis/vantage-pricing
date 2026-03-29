@@ -1,4 +1,4 @@
-// vantage-v44-word
+// vantage-v45-word
 const JSZip = require('jszip');
 
 exports.handler = async function(event, context) {
@@ -90,7 +90,10 @@ exports.handler = async function(event, context) {
         const n = Number(val);
         if (isNaN(n)) return String(val);
         if (dollarKeys.includes(field.k)) return '$' + n.toLocaleString('en-US');
-        if (pctKeys.includes(field.k)) return (n * 100).toFixed(1) + '%';
+        if (['clin_upfront','ciprian_pct'].includes(field.k)) return (n * 100).toFixed(1) + '%';
+        if (field.k === 'markup') return n.toFixed(2) + 'x';
+        // Year and month — display as plain integer, no locale separators
+        if (['start_yr', 'start_mo'].includes(field.k)) return String(Math.round(n));
         return n.toLocaleString('en-US');
       }
       return String(val);
