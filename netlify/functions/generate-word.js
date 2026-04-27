@@ -1,4 +1,14 @@
-// vantage-v45-word
+// vantage-v49-word
+// v49 changes:
+//  - Schema synced to index.html v49 (deal_structure, indication_tier, date_prepared,
+//    clin_contingency, vendor_mgmt_premium_rate, pi_fee, startup_sal_mult, closeout_sal_mult,
+//    referral_pct, referral_name, tigermed_target_ms, tigermed_target_clinical)
+//  - Removed legacy tigermed_cost field, renamed ciprian_pct -> referral_pct
+//  - Brand-blue title bar with VANTAGE wordmark and study name
+//  - Century Gothic typography throughout
+//  - New sections: Deal Structure context, Operational Phasing, Sensitivity Scenarios,
+//    Vendor Management Premium reference
+//  - Removed Versioning Notes section
 const JSZip = require('jszip');
 
 exports.handler = async function(event, context) {
@@ -13,296 +23,117 @@ exports.handler = async function(event, context) {
   try {
     const A = JSON.parse(event.body);
 
-    const GROUPS_ORDER = ['Study Identity','Timeline','Sites & Subjects','Regulatory','Monitoring','PM & Safety','Financial','Team Salaries','OpEx'];
+    // ── Apply same auto-flip defaults as generate-excel.js ──────────
+    const dealStructure = (A.deal_structure === 'Tigermed') ? 'Tigermed' : 'Local CRO';
+    const isLocalCRO = dealStructure === 'Local CRO';
+    A.deal_structure = dealStructure;
+    if (A.markup === undefined || A.markup === null || A.markup === '') A.markup = isLocalCRO ? 2.0 : 1.45;
+    if (A.clin_contingency === undefined || A.clin_contingency === null || A.clin_contingency === '') A.clin_contingency = isLocalCRO ? 0.5 : 0.25;
+    if (A.vendor_mgmt_premium_rate === undefined || A.vendor_mgmt_premium_rate === null || A.vendor_mgmt_premium_rate === '') A.vendor_mgmt_premium_rate = isLocalCRO ? 0.5 : 0;
+    if (A.clin_upfront === undefined || A.clin_upfront === null || A.clin_upfront === '') A.clin_upfront = 0.10;
+    if (A.startup_sal_mult === undefined || A.startup_sal_mult === null || A.startup_sal_mult === '') A.startup_sal_mult = 0.6;
+    if (A.closeout_sal_mult === undefined || A.closeout_sal_mult === null || A.closeout_sal_mult === '') A.closeout_sal_mult = 1.0;
 
-    const FIELDS = [
-      {k:"study_name",    lbl:"Study Name / Protocol",                     grp:"Study Identity",   t:"text"},
-      {k:"sponsor",       lbl:"Sponsor",                                    grp:"Study Identity",   t:"text"},
-      {k:"phase",         lbl:"Phase",                                      grp:"Study Identity",   t:"text"},
-      {k:"indication",    lbl:"Indication / Disease Area",                  grp:"Study Identity",   t:"text"},
-      {k:"start_mo",      lbl:"Trial Start Month (1=Jan 12=Dec)",           grp:"Timeline",         t:"number", note:"e.g. 4 = April"},
-      {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", note:"Four-digit year"},
-      {k:"startup_mo",    lbl:"Start-Up Phase (months)",                    grp:"Timeline",         t:"number", note:"Site selection, regulatory submissions"},
-      {k:"enroll_mo",     lbl:"Enrollment / Recruitment (months)",          grp:"Timeline",         t:"number", note:"Active patient recruitment window"},
-      {k:"treat_mo",      lbl:"Treatment Period (months)",                  grp:"Timeline",         t:"number", note:"Last patient in to last patient treatment complete"},
-      {k:"followup_mo",   lbl:"Follow-Up Period (months)",                  grp:"Timeline",         t:"number"},
-      {k:"closeout_mo",   lbl:"Close-Out Period (months)",                  grp:"Timeline",         t:"number", note:"Data lock, CSR, TMF transfer"},
-      {k:"kz_sites",      lbl:"Kazakhstan Sites Initiated",                 grp:"Sites & Subjects", t:"number", note:"Full Vantage-managed sites"},
-      {k:"sites_feas",    lbl:"Sites Feasibility Assessed",                 grp:"Sites & Subjects", t:"number"},
-      {k:"sites_screen",  lbl:"Sites Screened",                             grp:"Sites & Subjects", t:"number"},
-      {k:"subj_screen",   lbl:"Subjects Screened",                          grp:"Sites & Subjects", t:"number"},
-      {k:"subj_enroll",   lbl:"Subjects Enrolled",                          grp:"Sites & Subjects", t:"number"},
-      {k:"ec_init",       lbl:"Ethics Committee Initial Submissions",       grp:"Regulatory",       t:"number", note:"One submission for Kazakhstan"},
-      {k:"ec_annual",     lbl:"Ethics Committee Annual Reports",            grp:"Regulatory",       t:"number", note:"One per year while trial is active"},
-      {k:"ctra",          lbl:"CTRAs Executed",                             grp:"Regulatory",       t:"number", note:"One per Kazakhstan site"},
-      {k:"imv_1day",      lbl:"Interim Monitoring Visit - 1 Day",           grp:"Monitoring",       t:"number", note:"Computed from phase/sites/timeline"},
-      {k:"imv_2day",      lbl:"Interim Monitoring Visits 2 Days",           grp:"Monitoring",       t:"number"},
-      {k:"rmv",           lbl:"Remote Monitoring Visits",                   grp:"Monitoring",       t:"number", note:"Computed from phase/sites/timeline"},
-      {k:"siv",           lbl:"Site Initiation Visits",                     grp:"Monitoring",       t:"number", note:"= sites initiated"},
-      {k:"cov",           lbl:"Site Close-Out Visits",                      grp:"Monitoring",       t:"number"},
-      {k:"co_mon",        lbl:"Co-Monitoring Visits",                       grp:"Monitoring",       t:"number"},
-      {k:"tmf_qc",        lbl:"TMF QC Visits",                              grp:"Monitoring",       t:"number"},
-      {k:"sae",           lbl:"SAE Reports",                                grp:"Monitoring",       t:"number"},
-      {k:"susar",         lbl:"SUSAR Reports",                              grp:"Monitoring",       t:"number"},
-      {k:"sig_issues",    lbl:"Significant Issue Communications",           grp:"Monitoring",       t:"number"},
-      {k:"tc_sponsor",    lbl:"Teleconferences with Sponsor",               grp:"PM & Safety",      t:"number"},
-      {k:"tc_internal",   lbl:"Internal CRO Project TCs",                   grp:"PM & Safety",      t:"number"},
-      {k:"site_pay",      lbl:"Site Payments Processed",                    grp:"PM & Safety",      t:"number", note:"Quarterly x sites"},
-      {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number"},
-      {k:"tigermed_ms",      lbl:"Tigermed Target — Total Management Services (USD)",    grp:"Financial", t:"number", note:"From Tigermed proposal — enter manually"},
-      {k:"tigermed_clinical", lbl:"Tigermed Target — Total Clinical Trial Services (USD)", grp:"Financial", t:"number", note:"From Tigermed proposal — enter manually"},
-      {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", note:"Revenue = Tigermed x Markup"},
-      {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", note:"Portion billed at contract signing"},
-      {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", note:"Active during startup and enrollment"},
-      {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number"},
-      {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number"},
-      {k:"sal_almas",     lbl:"Almas salary monthly USD",                   grp:"Team Salaries",    t:"number"},
-      {k:"sal_didar",     lbl:"Didar salary monthly USD",                   grp:"Team Salaries",    t:"number"},
-      {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number"},
-      {k:"sal_alexander", lbl:"Alexander salary monthly USD",               grp:"Team Salaries",    t:"number"},
-      {k:"sal_shynar",    lbl:"Shynar salary monthly USD",                  grp:"Team Salaries",    t:"number"},
-      {k:"insurance_mo",  lbl:"Insurance monthly USD",                      grp:"OpEx",             t:"number"},
-      {k:"tech_mo",       lbl:"Technology Stack monthly USD",               grp:"OpEx",             t:"number"},
-      {k:"travel_m1",     lbl:"Travel and Accommodation Month 1",           grp:"OpEx",             t:"number"},
-      {k:"legal_m1",      lbl:"Legal and Compliance Month 1",               grp:"OpEx",             t:"number"},
-      {k:"audit_annual",  lbl:"Annual Compliance Audit",                    grp:"OpEx",             t:"number", note:"Fires every 12 months"},
-    ];
-
-    // Add referral partner row only if a commission rate is set
-    if (Number(A.ciprian_pct) > 0) {
-      FIELDS.push({k:"ciprian_pct", lbl:"Referral Partner Commission Rate", grp:"OpEx", t:"number", note:"Applied to all revenue each month"});
+    let tier = A.indication_tier;
+    if (!tier) {
+      const ind = String(A.indication || '').toLowerCase();
+      const isOnco   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
+      const isCardio = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
+      tier = isOnco ? 'Oncology' : isCardio ? 'Cardiology' : 'Other';
     }
+    A.indication_tier = tier;
+    const tierIsOnco = tier === 'Oncology';
+    if (A.pi_fee === undefined || A.pi_fee === null || A.pi_fee === '') A.pi_fee = tierIsOnco ? 4000 : 2000;
 
-    const dollarKeys = ['tigermed_ms','tigermed_clinical','sal_charlie','sal_zach','sal_almas','sal_didar',
-      'sal_alex','sal_alexander','sal_shynar','kz_ops_mo','insurance_mo','tech_mo','travel_m1','legal_m1','audit_annual'];
-    const pctKeys = ['markup','clin_upfront','ciprian_pct'];
-    const extractedKeys = ['study_name','sponsor','phase','indication','start_mo','start_yr',
-      'startup_mo','enroll_mo','treat_mo','followup_mo','closeout_mo','subj_enroll','ec_init'];
-
-    function esc(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    function formatVal(field, val) {
-      if (val === null || val === undefined || val === '') return '—';
-      if (field.t === 'number') {
-        const n = Number(val);
-        if (isNaN(n)) return String(val);
-        if (dollarKeys.includes(field.k)) return '$' + n.toLocaleString('en-US');
-        if (['clin_upfront','ciprian_pct'].includes(field.k)) return (n * 100).toFixed(1) + '%';
-        if (field.k === 'markup') return n.toFixed(2) + 'x';
-        // Year and month — display as plain integer, no locale separators
-        if (['start_yr', 'start_mo'].includes(field.k)) return String(Math.round(n));
-        return n.toLocaleString('en-US');
-      }
-      return String(val);
-    }
-
-    function sourceLabel(k) {
-      const overrides = A._overrideNotes || [];
-      if (overrides.some(n => n.toLowerCase().includes(k.replace(/_/g,' ')))) return 'Protocol signal';
-      return extractedKeys.includes(k) ? 'Extracted' : 'Formula default';
-    }
-
-    function getRationale(k) {
-      const sites   = Number(A.kz_sites) || 3;
-      const enroll  = Number(A.enroll_mo) || 8;
-      const treat   = Number(A.treat_mo) || 4;
-      const followup= Number(A.followup_mo) || 1;
-      const startup = Number(A.startup_mo) || 4;
-      const closeout= Number(A.closeout_mo) || 2;
-      const total   = startup + enroll + treat + followup + closeout;
-      const subj    = Number(A.subj_enroll) || 30;
-      const phase   = String(A.phase || '');
-      const is3     = /phase\s*3|phase\s*iii/i.test(phase) && !/2b/i.test(phase);
-      const is2     = /phase\s*2|phase\s*ii(?!i)|2b/i.test(phase);
-      const ind     = String(A.indication || '').toLowerCase();
-      const isOnco  = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
-      const isCardio= /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
-      const saeRate = isOnco ? '30%' : isCardio ? '5%' : '10%';
-      const susarRate = isOnco ? '10%' : '5%';
-      const phaseLbl = is3 ? 'Phase 3' : is2 ? 'Phase 2' : 'Phase 1/1b';
-      const map = {
-        study_name:   'Extracted from protocol title page.',
-        sponsor:      'Extracted from protocol title page.',
-        phase:        `Extracted from protocol. Determines phase-tiered formula defaults for monitoring, SAE/SUSAR rates, and timeline.`,
-        indication:   `Extracted from protocol. Determines SAE rate tier: oncology ${saeRate}, cardiology 5%, other 10%.`,
-        est_start:    'Display only — not used in calculations.',
-        start_mo:     'Extracted if explicitly stated in protocol; otherwise defaults to April (month 4).',
-        start_yr:     'Extracted if explicitly stated; otherwise defaults to current year.',
-        startup_mo:   `${startup} month${startup !== 1 ? 's' : ''}. Covers site selection, CTRA execution, EC and regulatory submissions, SIV, and site activation.`,
-        enroll_mo:    `${enroll} month${enroll !== 1 ? 's' : ''}. Extracted from protocol if explicitly stated. Active patient recruitment window.`,
-        treat_mo:     `${treat} month${treat !== 1 ? 's' : ''}. Extracted if stated. Last-patient-in to last-patient-treatment-complete.`,
-        followup_mo:  `${followup} month${followup !== 1 ? 's' : ''}. Post-treatment data collection before database lock.`,
-        closeout_mo:  `${closeout} month${closeout !== 1 ? 's' : ''}. TMF reconciliation, data lock, CSR submission and archiving.`,
-        kz_sites:     `${sites} sites. ${is3 ? 'Phase 3 default = 10.' : is2 ? 'Phase 2 default = 5.' : 'Phase 1/1b default = 3.'} Adjust manually per sponsor scope.`,
-        sites_feas:   `Formula: KZ sites x 2 = ${sites * 2}. Standard practice — assess twice the planned sites as fallback.`,
-        sites_screen: `Formula: KZ sites x 1.5 = ${Math.round(sites * 1.5)}. Sites proceeding from feasibility to screening.`,
-        subj_screen:  `Formula: enrolled x 1.3 = ${Math.round(subj * 1.3)}. ~23% screen failure rate — conservative for oncology inclusion/exclusion criteria.`,
-        subj_enroll:  `${subj} subjects. Extracted from protocol (global randomized/enrolled count).`,
-        ec_init:      'Single submission to Kazakhstan Central Bioethics Commission covers national approval.',
-        ec_annual:    `Formula: CEILING(${total} months / 12) = ${Math.max(1, Math.ceil(total/12))}. One annual progress report per calendar year of active conduct.`,
-        ctra:         `Formula: = KZ sites = ${sites}. One Clinical Trial Research Agreement per initiated site.`,
-        imv_1day:     is3
-          ? `Formula (Ph3): sites x enroll x 0.5 + sites x followup / 6 = ${sites} x ${enroll} x 0.5 + ${sites} x ${followup} / 6 = ${Number(A.imv_1day)||0}.`
-          : is2
-          ? `Formula (Ph2): (treat x 2 + enroll + followup) x sites = (${treat} x 2 + ${enroll} + ${followup}) x ${sites} = ${Number(A.imv_1day)||0}.`
-          : `Formula (Ph1/1b): sites x (enroll + followup) + sites x treat x 0.5 = ${sites} x (${enroll} + ${followup}) + ${sites} x ${treat} x 0.5 = ${Number(A.imv_1day)||0}.`,
-        imv_2day:     is2
-          ? `Formula (Ph2): CEILING(treat / 2) x sites = CEILING(${treat} / 2) x ${sites} = ${Number(A.imv_2day)||0}. Extended visits for source data verification.`
-          : `0. Not applicable for ${phaseLbl} under Tigermed methodology.`,
-        rmv:          is3
-          ? `Formula (Ph3): mirrors IMV = ${Number(A.rmv)||0}.`
-          : is2
-          ? `Formula (Ph2): sites x (enroll + treat + followup) x 0.5 = ${sites} x (${enroll} + ${treat} + ${followup}) x 0.5 = ${Number(A.rmv)||0}.`
-          : `Formula (Ph1/1b): mirrors IMV = ${Number(A.rmv)||0}.`,
-        siv:          `Formula: = KZ sites = ${sites}. One site initiation visit per site before first patient enrolled (GCP requirement).`,
-        cov:          `Formula: = KZ sites = ${sites}. One close-out visit per site at study completion.`,
-        co_mon:       `Formula: = KZ sites = ${sites}. Senior CRA accompanies primary monitor for quality oversight.`,
-        tmf_qc:       `Formula: ROUND(${total} / 6) = ${Math.max(1, Math.round(total/6))}. TMF quality check every 6 months.`,
-        sae:          `Formula: subjects x rate x 3 = ${subj} x ${saeRate} x 3 = ${Number(A.sae)||0}. ${isOnco ? 'Oncology rate.' : isCardio ? 'Cardiology rate.' : 'Standard rate.'} x3 multiplier for follow-up reports per event.`,
-        susar:        `Formula: subjects x rate = ${subj} x ${susarRate} = ${Number(A.susar)||0}. ${isOnco ? 'Oncology rate (10%).' : 'Standard rate (5%).'}`,
-        sig_issues:   `Formula: MAX(3, ROUND(sites x 0.5)) = ${Math.max(3, Math.round(sites * 0.5))}. Floor of 3 applied regardless of site count.`,
-        tc_sponsor:   `Formula: total months x 2 = ${total} x 2 = ${Number(A.tc_sponsor)||0}. Biweekly cadence throughout study.`,
-        tc_internal:  `Formula: TC Sponsor x 2 = ${Number(A.tc_sponsor)||0} x 2 = ${Number(A.tc_internal)||0}. Internal calls run at double sponsor cadence.`,
-        site_pay:     `Formula: sites x CEILING(total / 3) = ${sites} x ${Math.ceil(total/3)} = ${Number(A.site_pay)||0}. Quarterly payments per site.`,
-        periodic_saf: `Formula: MAX(1, CEILING(${total} / 12)) = ${Math.max(1, Math.ceil(total/12))}. One periodic safety report per year of conduct.`,
-        tigermed_ms:       (A.tigermed_ms === null || A.tigermed_ms === undefined || A.tigermed_ms === 0)
-          ? 'Not yet entered. Populate from Tigermed proposal when available — maps to Sponsor Output tab C2.'
-          : 'Entered manually from Tigermed proposal. Populates Assumptions B101 and Sponsor Output C2.',
-        tigermed_clinical: (A.tigermed_clinical === null || A.tigermed_clinical === undefined || A.tigermed_clinical === 0)
-          ? 'Not yet entered. Populate from Tigermed proposal when available — maps to Sponsor Output tab C3.'
-          : 'Entered manually from Tigermed proposal. Populates Assumptions B102 and Sponsor Output C3.',
-        markup:       `${((Number(A.markup)||1.45)*100).toFixed(0)}% markup. Clinical revenue = Tigermed cost x markup. Adjust based on cash flow modelling.`,
-        clin_upfront: `${((Number(A.clin_upfront)||0.1)*100).toFixed(0)}% billed at contract signing to cover mobilisation. Remainder spread monthly over enrollment.`,
-        kz_ops_mo:    'Fixed in-country operations cost (local office, comms, incidental site support). Active during startup and enrollment.',
-        sal_charlie:  'Monthly salary allocation. Set per study based on expected involvement level.',
-        sal_zach:     'Monthly salary allocation. Set per study based on expected involvement level.',
-        sal_almas:    'Monthly salary allocation. Set per study based on expected involvement level.',
-        sal_didar:    'Monthly salary allocation. Set per study based on expected involvement level.',
-        sal_alex:     'Monthly salary allocation. Set per study based on expected involvement level.',
-        sal_alexander:'Monthly salary allocation. Set per study based on expected involvement level.',
-        sal_shynar:   'Monthly salary allocation. Set per study based on expected involvement level.',
-        ciprian_pct:  '0.5% of all revenue per month. Commission applied to management fee and clinical revenue.',
-        insurance_mo: 'Professional indemnity and general liability insurance.',
-        tech_mo:      'Technology stack: CTMS, data management tools, and communication platforms.',
-        travel_m1:    'Initial travel and accommodation for site visits and sponsor meetings.',
-        legal_m1:     'Legal review of CTRA, ICF, and regulatory submission documents.',
-        audit_annual: 'Annual compliance audit. Triggers every 12 months of study conduct.',
-        ciprian_pct:  `${((Number(A.ciprian_pct)||0)*100).toFixed(1)}% of all revenue per month. Referral partner commission — study-specific, applied only when a referral agreement is in place.`,
-      };
-      return map[k] || '';
-    }
-
-
-    // ── XML helpers ──────────────────────────────────
-    function para(text, opts = {}) {
-      const { bold=false, size=20, color='000000', spaceAfter=100, spaceBefore=0, indent=0 } = opts;
-      const rPr = `<w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>`;
-      const pPr = `<w:pPr>
-        <w:spacing w:before="${spaceBefore}" w:after="${spaceAfter}"/>
-        ${indent ? `<w:ind w:left="${indent}"/>` : ''}
-        <w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>
-      </w:pPr>`;
-      return `<w:p>${pPr}<w:r>${rPr}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
-    }
-
-    function tcXml(text, opts = {}) {
-      const { bold=false, color='1A1A2E', bg=null, w=2000 } = opts;
-      const shading = bg ? `<w:shd w:val="clear" w:color="auto" w:fill="${bg}"/>` : '';
-      const rPr = `<w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>`;
-      return `<w:tc>
-        <w:tcPr>
-          <w:tcW w:w="${w}" w:type="dxa"/>
-          ${shading}
-          <w:tcBorders>
-            <w:top w:val="single" w:sz="4" w:color="CCCCCC"/>
-            <w:bottom w:val="single" w:sz="4" w:color="CCCCCC"/>
-            <w:left w:val="single" w:sz="4" w:color="CCCCCC"/>
-            <w:right w:val="single" w:sz="4" w:color="CCCCCC"/>
-          </w:tcBorders>
-          <w:tcMar>
-            <w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>
-            <w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/>
-          </w:tcMar>
-        </w:tcPr>
-        <w:p>
-          <w:pPr><w:spacing w:before="0" w:after="0"/>${rPr}</w:pPr>
-          <w:r>${rPr}<w:t xml:space="preserve">${esc(text)}</w:t></w:r>
-        </w:p>
-      </w:tc>`;
-    }
-
-    function tableXml(rows) {
-      return `<w:tbl>
-        <w:tblPr>
-          <w:tblW w:w="9072" w:type="dxa"/>
-          <w:tblLayout w:type="fixed"/>
-        </w:tblPr>
-        <w:tblGrid>
-          <w:gridCol w:w="2200"/><w:gridCol w:w="1400"/>
-          <w:gridCol w:w="1200"/><w:gridCol w:w="4272"/>
-        </w:tblGrid>
-        ${rows.join('\n')}
-      </w:tbl>`;
-    }
-
-    function trXml(cells) { return `<w:tr>${cells.join('')}</w:tr>`; }
-
-    // ── Financial computation (mirrors calcMgmtFee in index.html) ────
     function nA(k) { return Number(A[k]) || 0; }
-    function computeFinancials() {
-      const s   = nA('kz_sites') || 3;
-      const s_s = nA('sites_screen');
-      const s_f = nA('sites_feas');
-      const ec  = nA('ec_init') || 1;
-      const eca = nA('ec_annual') || 1;
-      const su  = nA('startup_mo');
-      const en  = nA('enroll_mo');
-      const tr  = nA('treat_mo');
-      const sut = su + en + tr;
-      const i1  = nA('imv_1day');
-      const rmv = nA('rmv');
-      const siv = nA('siv') || s;
-      const cov = nA('cov') || s;
-      const sae = nA('sae');
-      const sus = nA('susar');
-      const sig = nA('sig_issues');
-      const tcs = nA('tc_sponsor');
-      const tci = nA('tc_internal');
-      const sp  = nA('site_pay');
-      const ps  = nA('periodic_saf');
-      const _gtPM  = 1100+3000+800*s+2500+5000+850+100+500+2000;
-      const _gtSS  = 650+1500+500*s_s+250*s_f+2000*s+2500+250+500+1000+500+250+
-                     2500*s+1000+4000*ec+5000+5000+500*ec+2500*eca+5000+500+500+3500+3000+1000*s;
-      const _gtLab = 1500+3500+300*sut+3500+300*sut;
-      const _gtCM  = 2500*siv+1500*i1+750*rmv+500*en*s+250*sig+150*sig+500+500+
-                     200*sae+150*sus+250*sus+150*en*s+2500*cov;
-      const _gtPMR = 500*sut+250*sut+250*sut*2+5000+200*sp+250*s*sut+5000+500+3000+2500;
-      const _gtMT  = 10000+1500+500+7000+1000+2000+500*tcs+350*tci+15000+100*ps*4;
-      const _gtIP  = 300+2500+250*s*3;
-      const _gtCO  = 1000+10000;
-      const mgmtFee = _gtPM+_gtSS+_gtLab+_gtCM+_gtPMR+_gtMT+_gtIP+_gtCO;
-      const PER_PATIENT = 11762.5, SITE_FEE = 2000;
-      const cro = (PER_PATIENT * (nA('subj_enroll')||30)) + (SITE_FEE * s);
-      const markup = Number(A.markup) || 1.45;
-      const clinRev = cro * markup;
-      const totRev = mgmtFee + clinRev;
-      const salaries = nA('sal_charlie')+nA('sal_zach')+nA('sal_almas')+nA('sal_didar')+nA('sal_alex')+nA('sal_alexander')+nA('sal_shynar');
-      const total = su + en + tr + nA('followup_mo') + nA('closeout_mo');
-      const opex = salaries*total + mgmtFee*nA('ciprian_pct') + nA('insurance_mo')*total + nA('tech_mo')*total + nA('travel_m1') + nA('legal_m1') + nA('kz_ops_mo')*(su+en);
-      return { mgmtFee, clinRev, totRev, ebitda: totRev - cro - opex, cro };
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function fmtUSD(v) { return '$' + Math.round(Number(v)||0).toLocaleString('en-US'); }
+    function fmtPct(v) { return ((Number(v)||0)*100).toFixed(1) + '%'; }
+
+    const studyName = A.study_name || 'Unknown Study';
+    const sponsor   = A.sponsor    || '—';
+    const phase     = A.phase      || '—';
+    const indication = A.indication || '—';
+    const datePrep  = A.date_prepared || new Date().toISOString().slice(0,10);
+    const totalMos  = (Number(A.startup_mo)||0)+(Number(A.enroll_mo)||0)+(Number(A.treat_mo)||0)+(Number(A.followup_mo)||0)+(Number(A.closeout_mo)||0);
+
+    // ── Brand styling: Century Gothic, Vantage royal blue ─────────
+    const FONT = 'Century Gothic';
+    const BLUE = '1B6BF5';
+    const NAVY = '1A1A2E';
+    const GRAY = '555555';
+    const LIGHT = 'F0F4FF';
+
+    function rPr(opts) {
+      const { bold=false, color='000000', size=20 } = opts || {};
+      return `<w:rPr><w:rFonts w:ascii="${FONT}" w:hAnsi="${FONT}" w:cs="${FONT}"/>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>`;
+    }
+    function para(text, opts) {
+      opts = opts || {};
+      const { bold=false, size=20, color='000000', spaceAfter=100, spaceBefore=0, align='left' } = opts;
+      const alignXml = align !== 'left' ? `<w:jc w:val="${align}"/>` : '';
+      const pPr = `<w:pPr><w:spacing w:before="${spaceBefore}" w:after="${spaceAfter}"/>${alignXml}${rPr({bold,color,size})}</w:pPr>`;
+      return `<w:p>${pPr}<w:r>${rPr({bold,color,size})}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+    }
+    function tcXml(text, opts) {
+      opts = opts || {};
+      const { bold=false, color=NAVY, bg=null, w=2000, align='left' } = opts;
+      const shading = bg ? `<w:shd w:val="clear" w:color="auto" w:fill="${bg}"/>` : '';
+      const alignXml = align !== 'left' ? `<w:jc w:val="${align}"/>` : '';
+      return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${shading}<w:tcBorders><w:top w:val="single" w:sz="4" w:color="CCCCCC"/><w:bottom w:val="single" w:sz="4" w:color="CCCCCC"/><w:left w:val="single" w:sz="4" w:color="CCCCCC"/><w:right w:val="single" w:sz="4" w:color="CCCCCC"/></w:tcBorders><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0"/>${alignXml}${rPr({bold,color,size:18})}</w:pPr><w:r>${rPr({bold,color,size:18})}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p></w:tc>`;
+    }
+    function trXml(cells) { return `<w:tr>${cells.join('')}</w:tr>`; }
+    function tableXml(rows, gridCols) {
+      const grid = gridCols.map(w=>`<w:gridCol w:w="${w}"/>`).join('');
+      return `<w:tbl><w:tblPr><w:tblW w:w="${gridCols.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${rows.join('')}</w:tbl>`;
+    }
+    function kvTable(rows) {
+      // Two-column key-value table
+      const allRows = rows.map((r,i)=>{
+        const bg = i%2===0 ? LIGHT : null;
+        return trXml([
+          tcXml(r[0], {color:NAVY, bg, w:3500}),
+          tcXml(String(r[1]), {color:NAVY, bg, w:5572}),
+        ]);
+      });
+      return tableXml(allRows, [3500, 5572]);
     }
 
-    // ── Milestone schedule ────────────────────────────
+    // ── Financial computation (mirrors baseline IO logic) ──────────
+    function computeFinancials() {
+      // Approximate Vantage Management Fee — server-side mirror of MS sheet totals.
+      // Not used for invoice; this is a high-level estimate for the Word log.
+      const s   = nA('kz_sites') || 3;
+      const subj = nA('subj_enroll') || 100;
+      const pi_fee = nA('pi_fee') || 2000;
+
+      // High-level Vantage MS estimate (rough — Excel does the precise calc)
+      const baseMS = 250000 + 50000 * s; // rough Phase-1 anchor + per-site
+      const premium = isLocalCRO ? baseMS * (nA('vendor_mgmt_premium_rate') || 0.5) : 0;
+      const mgmtFee = baseMS + premium;
+
+      // Clinical estimate: ~$590 per patient screening + ~$600 per patient treatment
+      // (varies by phase) plus PI fee per site, then markup + contingency
+      const perPatient = 1200; // rough Phase 1 average
+      const clinBase = perPatient * subj + pi_fee * s;
+      const contingency = clinBase * (nA('clin_contingency') || 0.5);
+      const cro = clinBase + contingency;
+      const markup = nA('markup') || 2.0;
+      const clinRev = cro * markup;
+
+      const totRev = mgmtFee + clinRev;
+      return { mgmtFee, baseMS, premium, cro, clinRev, totRev };
+    }
+    const fin = computeFinancials();
+
+    // ── Milestone schedule ─────────────────────────────────────────
     function computeMilestones() {
       const startup  = nA('startup_mo') || 4;
-      const enroll   = nA('enroll_mo')  || 8;
-      const treat    = nA('treat_mo')   || 4;
-      const followup = nA('followup_mo')|| 1;
-      const closeout = nA('closeout_mo')|| 2;
-      const startMo  = nA('start_mo')   || 4;
+      const enroll   = nA('enroll_mo')  || 6;
+      const treat    = nA('treat_mo')   || 1;
+      const followup = nA('followup_mo')|| 2;
+      const closeout = nA('closeout_mo')|| 1;
+      const startMo  = nA('start_mo')   || 1;
       const startYr  = nA('start_yr')   || new Date().getFullYear();
       const moNames  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       function moLabel(offset) {
@@ -311,191 +142,207 @@ exports.handler = async function(event, context) {
         return `${moNames[mo]} ${yr} (Mo ${offset + 1})`;
       }
       return [
-        { pct: '15%', lbl: 'Contract Signed',    mo: moLabel(0) },
-        { pct: '10%', lbl: 'EC Approval',         mo: moLabel(startup) },
-        { pct: '10%', lbl: 'First Subject In',    mo: moLabel(startup + 1) },
-        { pct: '10%', lbl: '25% Enrolled',        mo: moLabel(startup + Math.round(enroll * 0.25)) },
-        { pct: '10%', lbl: '50% Enrolled',        mo: moLabel(startup + Math.round(enroll * 0.50)) },
-        { pct: '10%', lbl: '75% Enrolled',        mo: moLabel(startup + Math.round(enroll * 0.75)) },
-        { pct: '10%', lbl: 'Last Subject In',     mo: moLabel(startup + enroll) },
-        { pct: '5%',  lbl: '50% Treatment',       mo: moLabel(startup + enroll + Math.round(treat * 0.5)) },
-        { pct: '5%',  lbl: '90% Treatment',       mo: moLabel(startup + enroll + Math.round(treat * 0.9)) },
-        { pct: '8%',  lbl: 'Database Lock',       mo: moLabel(startup + enroll + treat + followup - 1) },
-        { pct: '5%',  lbl: 'CSR Submitted',       mo: moLabel(startup + enroll + treat + followup) },
-        { pct: '2%',  lbl: 'TMF Transfer',        mo: moLabel(startup + enroll + treat + followup + closeout - 1) },
+        { pct: 15, lbl: 'Contract Signed',    mo: moLabel(0) },
+        { pct: 10, lbl: 'EC Approval',         mo: moLabel(startup) },
+        { pct: 10, lbl: 'First Subject In',    mo: moLabel(startup + 1) },
+        { pct: 10, lbl: '25% Enrolled',        mo: moLabel(startup + Math.round(enroll * 0.25)) },
+        { pct: 10, lbl: '50% Enrolled',        mo: moLabel(startup + Math.round(enroll * 0.50)) },
+        { pct: 10, lbl: '75% Enrolled',        mo: moLabel(startup + Math.round(enroll * 0.75)) },
+        { pct: 10, lbl: 'Last Subject In',     mo: moLabel(startup + enroll) },
+        { pct: 5,  lbl: '50% Treatment',       mo: moLabel(startup + enroll + Math.round(treat * 0.5)) },
+        { pct: 5,  lbl: '90% Treatment',       mo: moLabel(startup + enroll + Math.round(treat * 0.9)) },
+        { pct: 8,  lbl: 'Database Lock',       mo: moLabel(startup + enroll + treat + followup - 1) },
+        { pct: 5,  lbl: 'CSR Submitted',       mo: moLabel(startup + enroll + treat + followup) },
+        { pct: 2,  lbl: 'TMF Transfer',        mo: moLabel(startup + enroll + treat + followup + closeout - 1) },
       ];
     }
-
-
-    const today = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
-    const studyName = A.study_name || 'Unknown Study';
-    const sponsor   = A.sponsor    || '—';
-    const phase     = A.phase      || '—';
-    const totalMos  = (Number(A.startup_mo)||0)+(Number(A.enroll_mo)||0)+(Number(A.treat_mo)||0)+(Number(A.followup_mo)||0)+(Number(A.closeout_mo)||0);
-    const fin = computeFinancials();
     const milestones = computeMilestones();
 
+    // ── Build document body ────────────────────────────────────────
     const body = [];
 
-    // ── Cover ─────────────────────────────────────────
-    body.push(para('Vantage Pricing Engine — Assumption Log', {bold:true, size:32, color:'1B6BF5', spaceAfter:80}));
-    body.push(para(studyName, {bold:true, size:24, color:'1A1A2E', spaceAfter:60}));
-    body.push(para(`Sponsor: ${sponsor}   |   Phase: ${phase}   |   Duration: ${totalMos} months`, {size:18, color:'555555', spaceAfter:60}));
-    body.push(para(`Generated: ${today}`, {size:18, color:'888888', spaceAfter:300}));
+    // 1. Title bar — brand blue with white wordmark
+    body.push(`<w:p><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="${BLUE}"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r>${rPr({bold:true,color:'FFFFFF',size:32})}<w:t xml:space="preserve">VANTAGE CLINICAL TRIALS</w:t></w:r></w:p>`);
+    body.push(`<w:p><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="${BLUE}"/><w:spacing w:before="0" w:after="200"/></w:pPr><w:r>${rPr({color:'FFFFFF',size:20})}<w:t xml:space="preserve">Pricing Assumption Log</w:t></w:r></w:p>`);
 
-    // ── 1. Study Context ──────────────────────────────
-    body.push(para('Study Context', {bold:true, size:24, color:'1B6BF5', spaceBefore:100, spaceAfter:100}));
-    if (A._studyContext) {
-      body.push(para(A._studyContext, {size:18, color:'1A1A2E', spaceAfter:100}));
+    // 2. Study Header
+    body.push(para(studyName, {bold:true, size:28, color:NAVY, spaceBefore:200, spaceAfter:60}));
+    body.push(para(`${sponsor} · ${phase} · ${indication}`, {size:20, color:GRAY, spaceAfter:80}));
+    body.push(para(`Prepared ${datePrep} · Vantage Clinical Trials`, {size:18, color:GRAY, spaceAfter:300}));
+
+    // 3. Deal Structure context
+    body.push(para('Deal Structure', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    if (isLocalCRO) {
+      body.push(para(`This proposal uses Vantage as the prime contractor with a Local CRO performing clinical operations as a vendor pass-through. Vantage Management Services include a ${fmtPct(A.vendor_mgmt_premium_rate)} Vendor Management Premium on top of the MS subtotal envelope. Clinical Cost Contingency is set at ${fmtPct(A.clin_contingency)} of the procedure base. Clinical markup is ${A.markup}× the contingency-buffered cost.`, {size:18, color:NAVY, spaceAfter:200}));
     } else {
-      body.push(para(`${studyName}. Sponsor: ${sponsor}. Vantage Clinical Trials is managing Kazakhstan operations for this ${phase} study in ${A.indication || 'the specified indication'}, covering ${Number(A.kz_sites)||3} site(s) and up to ${Number(A.subj_enroll)||30} enrolled subjects over ${totalMos} months.`, {size:18, color:'1A1A2E', spaceAfter:100}));
+      body.push(para(`This proposal uses Vantage as a sub-contractor to Tigermed. Tigermed Target Management Services = ${fmtUSD(A.tigermed_target_ms)}; Tigermed Target Clinical Trial Services = ${fmtUSD(A.tigermed_target_clinical)}. Vendor Management Premium is zero in this structure (Tigermed manages the vendor relationship directly). Clinical Cost Contingency is set at ${fmtPct(A.clin_contingency)} (lower than Local CRO since Tigermed bears more execution risk). Clinical markup is ${A.markup}×.`, {size:18, color:NAVY, spaceAfter:200}));
     }
-    body.push(para('All assumptions were derived from the uploaded clinical trial synopsis or protocol, Vantage methodology formulas (phase-tiered monitoring, SAE/SUSAR rates, TC cadence), and Kazakhstan-specific CRO market benchmarks.', {size:18, color:'555555', spaceAfter:200}));
 
-    // ── 2. Financial Summary ──────────────────────────
-    body.push(para('Financial Summary', {bold:true, size:24, color:'1B6BF5', spaceBefore:100, spaceAfter:100}));
+    // 4. Financial Summary
+    body.push(para('Financial Summary', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    body.push(kvTable([
+      ['Vantage Management Fee (estimate)', fmtUSD(fin.mgmtFee)],
+      ['Clinical Trial Services Revenue', fmtUSD(fin.clinRev)],
+      ['Total Proposal (estimate)', fmtUSD(fin.totRev)],
+      ['Trial Duration', `${totalMos} months`],
+      ['Subjects Enrolled', String(nA('subj_enroll'))],
+      ['Kazakhstan Sites', String(nA('kz_sites'))],
+      ['Indication Tier', tier],
+    ]));
+    body.push(para('Note: Figures above are server-side estimates for cross-reference. The Excel model is the source of truth for invoice-grade numbers — open it to see the precise Vantage Management Fee, Vendor Management Premium calculation, and full milestone-aligned cash flow.', {size:16, color:GRAY, spaceBefore:120, spaceAfter:200}));
+
+    // 5. Study Identity
+    body.push(para('Study Identity', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    body.push(kvTable([
+      ['Study / Protocol', studyName],
+      ['Sponsor', sponsor],
+      ['Phase', phase],
+      ['Indication', indication],
+      ['Indication Tier', tier],
+      ['Deal Structure', dealStructure],
+    ]));
+
+    // 6. Timeline
+    body.push(para('Timeline', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    const startMoNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    body.push(kvTable([
+      ['Trial Start', `${startMoNames[(nA('start_mo')||1)-1]} ${nA('start_yr')||'—'}`],
+      ['Start-Up Phase', `${nA('startup_mo')} months`],
+      ['Enrollment', `${nA('enroll_mo')} months`],
+      ['Treatment', `${nA('treat_mo')} months`],
+      ['Follow-Up', `${nA('followup_mo')} months`],
+      ['Close-Out', `${nA('closeout_mo')} months`],
+      ['Total Duration', `${totalMos} months`],
+    ]));
+
+    // 7. Sites & Subjects
+    body.push(para('Sites & Subjects', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    body.push(kvTable([
+      ['Kazakhstan Sites', String(nA('kz_sites'))],
+      ['Sites Screened', String(nA('sites_screen') || Math.round(nA('kz_sites')*1.5))],
+      ['Subjects Enrolled', String(nA('subj_enroll'))],
+      ['Subjects Screened (computed = enrolled × 1.3)', String(Math.round(nA('subj_enroll')*1.3))],
+    ]));
+
+    // 8. Monitoring & Safety
+    body.push(para('Monitoring & Safety', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    const saeRateLbl = tier === 'Oncology' ? '30%' : tier === 'Cardiology' ? '5%' : '10%';
+    const susarRateLbl = tier === 'Oncology' ? '10%' : '5%';
+    body.push(kvTable([
+      ['IMV — 1 Day', String(nA('imv_1day'))],
+      ['IMV — 2 Day', String(nA('imv_2day'))],
+      ['Remote Monitoring Visits', String(nA('rmv'))],
+      ['Site Initiation Visits', String(nA('siv'))],
+      ['Site Close-Out Visits', String(nA('cov'))],
+      [`SAE Reports (${saeRateLbl} × subjects × 3)`, String(nA('sae'))],
+      [`SUSAR Reports (${susarRateLbl} × subjects)`, String(nA('susar'))],
+      ['Significant Issue Communications', String(nA('sig_issues'))],
+    ]));
+
+    // 9. Project Management
+    body.push(para('Project Management', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    body.push(kvTable([
+      ['Sponsor TCs (biweekly)', String(nA('tc_sponsor'))],
+      ['Internal CRO TCs', String(nA('tc_internal'))],
+      ['Site Payments Processed', String(nA('site_pay'))],
+      ['Periodic Safety Reports', String(nA('periodic_saf'))],
+    ]));
+
+    // 10. Financial Levers
+    body.push(para('Financial Levers', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
     const finRows = [
-      trXml([
-        tcXml('Component',    {bold:true, color:'FFFFFF', bg:'1B6BF5', w:4536}),
-        tcXml('Amount (USD)', {bold:true, color:'FFFFFF', bg:'1B6BF5', w:4536}),
-      ]),
-      trXml([tcXml('Management Fee (Vantage Services)',      {color:'1A1A2E', bg:'F0F4FF', w:4536}), tcXml('$'+Math.round(fin.mgmtFee).toLocaleString('en-US'),  {color:'1A1A2E', bg:'F0F4FF', w:4536})]),
-      trXml([tcXml('Clinical Revenue (Tigermed × Markup)',   {color:'1A1A2E', w:4536}),              tcXml('$'+Math.round(fin.clinRev).toLocaleString('en-US'),  {color:'1A1A2E', w:4536})]),
-      trXml([tcXml('Total Proposal Revenue',                 {bold:true, color:'1B6BF5', bg:'F0F4FF', w:4536}), tcXml('$'+Math.round(fin.totRev).toLocaleString('en-US'), {bold:true, color:'1B6BF5', bg:'F0F4FF', w:4536})]),
-      trXml([tcXml('Estimated EBITDA',                       {color:'1A1A2E', w:4536}),              tcXml('$'+Math.round(fin.ebitda).toLocaleString('en-US'),  {color:'1A1A2E', w:4536})]),
+      ['Clinical Services Markup', `${A.markup}×`],
+      ['Clinical Revenue Upfront %', fmtPct(A.clin_upfront)],
+      ['Clinical Cost Contingency', fmtPct(A.clin_contingency)],
+      ['Vendor Management Premium Rate', fmtPct(A.vendor_mgmt_premium_rate)],
+      ['PI Fee per Site', fmtUSD(A.pi_fee)],
+      ['KZ In-Country Operations / Month', fmtUSD(A.kz_ops_mo)],
     ];
-    body.push(`<w:tbl><w:tblPr><w:tblW w:w="9072" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="4536"/><w:gridCol w:w="4536"/></w:tblGrid>${finRows.join('')}</w:tbl>`);
-
-    // ── 3. Assumption Tables ──────────────────────────
-    for (const grpName of GROUPS_ORDER) {
-      const fields = FIELDS.filter(f => f.grp === grpName);
-      if (!fields.length) continue;
-      body.push(para(grpName, {bold:true, size:22, color:'1B6BF5', spaceBefore:300, spaceAfter:100}));
-      const rows = [];
-      rows.push(trXml([
-        tcXml('Assumption',            {bold:true, color:'FFFFFF', bg:'1B6BF5', w:2200}),
-        tcXml('Value',                 {bold:true, color:'FFFFFF', bg:'1B6BF5', w:1400}),
-        tcXml('Source',                {bold:true, color:'FFFFFF', bg:'1B6BF5', w:1200}),
-        tcXml('Derivation & Rationale',{bold:true, color:'FFFFFF', bg:'1B6BF5', w:4272}),
-      ]));
-      fields.forEach((f, i) => {
-        const bg = i % 2 === 0 ? 'F0F4FF' : null;
-        rows.push(trXml([
-          tcXml(f.lbl,                  {color:'1A1A2E', bg, w:2200}),
-          tcXml(formatVal(f, A[f.k]),   {color:'1A1A2E', bg, w:1400}),
-          tcXml(sourceLabel(f.k),       {color:'555555', bg, w:1200}),
-          tcXml(getRationale(f.k),      {color:'333333', bg, w:4272}),
-        ]));
-      });
-      body.push(tableXml(rows));
+    if (dealStructure === 'Tigermed') {
+      finRows.push(['Tigermed Target — Management Services', fmtUSD(A.tigermed_target_ms)]);
+      finRows.push(['Tigermed Target — Clinical Trial Services', fmtUSD(A.tigermed_target_clinical)]);
     }
+    body.push(kvTable(finRows));
 
-    // ── 4. Key Decisions & Protocol Signal Overrides ──
-    const overrides = A._overrideNotes || [];
-    body.push(para('Key Decisions & Assumptions Rationale', {bold:true, size:24, color:'1B6BF5', spaceBefore:300, spaceAfter:100}));
+    // 11. Team Salaries
+    body.push(para('Team Salaries (Monthly)', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    const sal = ['Charlie','Zach','Almas','Didar','Alex','Alexander','Shynar'];
+    const salKeys = ['sal_charlie','sal_zach','sal_almas','sal_didar','sal_alex','sal_alexander','sal_shynar'];
+    const salRows = sal.map((nm,i)=>[nm, fmtUSD(A[salKeys[i]])]);
+    salRows.push(['Total Monthly Salaries', fmtUSD(salKeys.reduce((sum,k)=>sum+nA(k),0))]);
+    body.push(kvTable(salRows));
 
-    if (overrides.length > 0) {
-      body.push(para('Protocol Signal Overrides', {bold:true, size:20, color:'1A1A2E', spaceAfter:80}));
-      body.push(para('The following formula defaults were overridden based on explicit language found in the uploaded protocol:', {size:18, color:'555555', spaceAfter:100}));
-      overrides.forEach((note, i) => {
-        body.push(para(`${i+1}. ${note}`, {size:18, spaceAfter:80, indent:360}));
-      });
-      body.push(para('', {spaceAfter:100}));
+    // 12. Operational Phasing (NEW)
+    body.push(para('Operational Phasing', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    body.push(para(`Salaries are scaled by phase to reflect actual workload during ramp-up and wind-down. During the first ${nA('startup_mo')} months (Start-Up Phase), salaries are paid at ${(nA('startup_sal_mult')*100).toFixed(0)}% of full rate. During the final ${nA('closeout_mo')} month${nA('closeout_mo')===1?'':'s'} (Close-Out Phase), salaries are paid at ${(nA('closeout_sal_mult')*100).toFixed(0)}% of full rate. Active phases (Enrollment, Treatment, Follow-Up) run at 100%.`, {size:18, color:NAVY, spaceAfter:200}));
+
+    // 13. OpEx
+    body.push(para('Operating Expenses', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
+    const opexRows = [
+      ['Insurance / Month', fmtUSD(A.insurance_mo)],
+      ['Technology Stack / Month', fmtUSD(A.tech_mo)],
+      ['Travel & Accommodation (Month 1)', fmtUSD(A.travel_m1)],
+      ['Legal & Compliance (Month 1)', fmtUSD(A.legal_m1)],
+      ['Annual Compliance Audit', fmtUSD(A.audit_annual)],
+    ];
+    if (nA('referral_pct') > 0) {
+      const refLabel = A.referral_name ? `Referral Partner (${A.referral_name})` : 'Referral Partner Commission';
+      opexRows.push([refLabel, fmtPct(A.referral_pct)]);
     }
+    body.push(kvTable(opexRows));
 
-    const sites_kd  = Number(A.kz_sites) || 3;
-    const enroll_kd = Number(A.enroll_mo) || 8;
-    const treat_kd  = Number(A.treat_mo) || 4;
-    const followup_kd = Number(A.followup_mo) || 1;
-    const startup_kd  = Number(A.startup_mo) || 4;
-    const closeout_kd = Number(A.closeout_mo) || 2;
-    const total_kd  = startup_kd + enroll_kd + treat_kd + followup_kd + closeout_kd;
-    const subj_kd   = Number(A.subj_enroll) || 30;
-    const phaseStr  = String(A.phase || '');
-    const is3_kd    = /phase\s*3|phase\s*iii/i.test(phaseStr) && !/2b/i.test(phaseStr);
-    const is2_kd    = /phase\s*2|phase\s*ii(?!i)|2b/i.test(phaseStr);
-    const ind_kd    = String(A.indication || '').toLowerCase();
-    const isOnco_kd = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind_kd);
-
-    body.push(para('Monitoring Intensity', {bold:true, size:20, color:'1A1A2E', spaceAfter:60}));
-    body.push(para(`Monitoring visit counts use the Tigermed ${is3_kd?'Phase 3':is2_kd?'Phase 2':'Phase 1/1b'} formula. IMV (1-day): ${Number(A.imv_1day)||0} visits across ${sites_kd} site(s) over ${enroll_kd+treat_kd+followup_kd} active months. Remote monitoring visits: ${Number(A.rmv)||0}. ${overrides.some(n=>n.toLowerCase().includes('imv'))?'Note: IMV count was overridden by explicit protocol signal — see above.':'No protocol-specific monitoring cadence was found; formula defaults apply.'}`, {size:18, color:'333333', spaceAfter:120}));
-
-    body.push(para('SAE & SUSAR Rates', {bold:true, size:20, color:'1A1A2E', spaceAfter:60}));
-    body.push(para(`${isOnco_kd?'Oncology indication: 30% SAE rate and 10% SUSAR rate applied.':'Standard indication: 10% SAE rate and 5% SUSAR rate applied.'} SAE count = ${subj_kd} subjects x ${isOnco_kd?'30%':'10%'} x 3 follow-up reports = ${Number(A.sae)||0}. SUSAR count = ${subj_kd} x ${isOnco_kd?'10%':'5%'} = ${Number(A.susar)||0}.${overrides.some(n=>n.toLowerCase().includes('sae')||n.toLowerCase().includes('susar'))?' One or more values overridden by protocol signal — see above.':''}`, {size:18, color:'333333', spaceAfter:120}));
-
-    body.push(para('Teleconferences & Project Management', {bold:true, size:20, color:'1A1A2E', spaceAfter:60}));
-    body.push(para(`Sponsor TCs = total months x 2 = ${total_kd} x 2 = ${Number(A.tc_sponsor)||0} (biweekly cadence). Internal CRO TCs = TC Sponsor x 2 = ${Number(A.tc_internal)||0}. Site payments = ${sites_kd} sites x CEILING(${total_kd}/3) = ${Number(A.site_pay)||0} (quarterly per site).`, {size:18, color:'333333', spaceAfter:120}));
-
-    body.push(para('Financial Assumptions', {bold:true, size:20, color:'1A1A2E', spaceAfter:60}));
-    body.push(para(`Management fee of $${Math.round(fin.mgmtFee).toLocaleString('en-US')} computed from the Vantage Management Services fee schedule (8 service categories, unit prices benchmarked against Kazakhstan CRO market rates at 35-45% below Western Europe). Clinical markup of ${((Number(A.markup)||1.45)*100).toFixed(0)}% applied to Tigermed clinical cost base. Clinical upfront of ${((Number(A.clin_upfront)||0.1)*100).toFixed(0)}% billed at contract signing.`, {size:18, color:'333333', spaceAfter:200}));
-
-    // ── 5. Milestone Payment Schedule ────────────────
-    body.push(para('Milestone Payment Schedule', {bold:true, size:24, color:'1B6BF5', spaceBefore:200, spaceAfter:100}));
+    // 14. Milestone Payment Schedule
+    body.push(para('Milestone Payment Schedule', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
     const totalProposal = fin.totRev;
-    const msRows = [
-      trXml([
-        tcXml('Milestone',    {bold:true, color:'FFFFFF', bg:'1B6BF5', w:2400}),
-        tcXml('% of Total',   {bold:true, color:'FFFFFF', bg:'1B6BF5', w:1200}),
-        tcXml('Amount (USD)', {bold:true, color:'FFFFFF', bg:'1B6BF5', w:1800}),
-        tcXml('Timing',       {bold:true, color:'FFFFFF', bg:'1B6BF5', w:3672}),
-      ]),
-      ...milestones.map((m, i) => trXml([
-        tcXml(m.lbl, {color:'1A1A2E', bg:i%2===0?'F0F4FF':null, w:2400}),
-        tcXml(m.pct, {color:'555555', bg:i%2===0?'F0F4FF':null, w:1200}),
-        tcXml('$'+Math.round(totalProposal*(parseInt(m.pct)/100)).toLocaleString('en-US'), {color:'1A1A2E', bg:i%2===0?'F0F4FF':null, w:1800}),
-        tcXml(m.mo,  {color:'333333', bg:i%2===0?'F0F4FF':null, w:3672}),
-      ]))
-    ];
-    body.push(`<w:tbl><w:tblPr><w:tblW w:w="9072" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="2400"/><w:gridCol w:w="1200"/><w:gridCol w:w="1800"/><w:gridCol w:w="3672"/></w:tblGrid>${msRows.join('')}</w:tbl>`);
+    const msHeader = trXml([
+      tcXml('Milestone',    {bold:true, color:'FFFFFF', bg:BLUE, w:2400}),
+      tcXml('% of Total',   {bold:true, color:'FFFFFF', bg:BLUE, w:1200}),
+      tcXml('Amount (USD)', {bold:true, color:'FFFFFF', bg:BLUE, w:1800}),
+      tcXml('Timing',       {bold:true, color:'FFFFFF', bg:BLUE, w:3672}),
+    ]);
+    const msBody = milestones.map((m,i)=>{
+      const bg = i%2===0 ? LIGHT : null;
+      return trXml([
+        tcXml(m.lbl, {color:NAVY, bg, w:2400}),
+        tcXml(m.pct + '%', {color:GRAY, bg, w:1200}),
+        tcXml(fmtUSD(totalProposal * m.pct/100), {color:NAVY, bg, w:1800}),
+        tcXml(m.mo, {color:GRAY, bg, w:3672}),
+      ]);
+    });
+    body.push(tableXml([msHeader, ...msBody], [2400, 1200, 1800, 3672]));
 
-    // ── Footer ────────────────────────────────────────
+    // 15. Sensitivity Scenarios (Local CRO only)
+    if (isLocalCRO) {
+      body.push(para('Sensitivity Scenarios — Local CRO Quote', {bold:true, size:24, color:BLUE, spaceBefore:300, spaceAfter:100}));
+      body.push(para('The Excel model includes scenario sensitivity at 100%, 85%, and 70% of the Local CRO envelope (assuming favourable negotiation). Refer to the Internal Overview tab for distributable margin and recommended monthly draws under each scenario.', {size:18, color:NAVY, spaceAfter:200}));
+    }
+
+    // 16. Source Model Reference
+    const safeName = studyName.replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
+    body.push(para('Source Model', {bold:true, size:24, color:BLUE, spaceBefore:300, spaceAfter:100}));
+    body.push(para(`Companion Excel file: Vantage_Pricing_${safeName}.xlsx`, {size:18, color:NAVY, spaceAfter:60}));
+    body.push(para(`Baseline template: Vantage_Pricing_Model_Baseline_v2.xlsx (8 sheets — Cover, Assumptions, Vantage Output, Sponsor Output, Internal Overview, Management Services, Clinical Costs, Profit & Loss).`, {size:18, color:NAVY, spaceAfter:200}));
+
+    // Footer
     body.push(para('', {spaceAfter:200}));
-    body.push(para('This document is auto-generated by the Vantage Pricing Engine. All assumptions should be reviewed and validated by a qualified CRA or clinical operations lead before use in sponsor proposals.', {size:16, color:'888888', spaceAfter:0}));
+    body.push(para(`This document is auto-generated by the Vantage Pricing Engine. All assumptions should be reviewed and validated by a qualified clinical operations lead before use in sponsor proposals. The companion Excel model is the source of truth for all financial figures.`, {size:14, color:'888888', spaceAfter:0}));
 
-    // ── Assemble OOXML ────────────────────────────────
+    // ── Assemble OOXML ────────────────────────────────────────────
     const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>
-    ${body.join('\n    ')}
-    <w:sectPr>
-      <w:pgSz w:w="12240" w:h="15840"/>
-      <w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/>
-    </w:sectPr>
-  </w:body>
-</w:document>`;
+<w:document xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>${body.join('')}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
 
     const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
-</Types>`;
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`;
 
     const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
 
     const wordRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
 
     const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:docDefaults>
-    <w:rPrDefault><w:rPr>
-      <w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>
-      <w:sz w:val="20"/><w:szCs w:val="20"/>
-    </w:rPr></w:rPrDefault>
-  </w:docDefaults>
-  <w:style w:type="paragraph" w:styleId="Normal" w:default="1">
-    <w:name w:val="Normal"/>
-    <w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/></w:rPr>
-  </w:style>
-</w:styles>`;
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="${FONT}" w:hAnsi="${FONT}" w:cs="${FONT}"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:styleId="Normal" w:default="1"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="${FONT}" w:hAnsi="${FONT}"/><w:sz w:val="20"/></w:rPr></w:style></w:styles>`;
 
     const zip = new JSZip();
     zip.file('[Content_Types].xml', contentTypesXml);
@@ -511,12 +358,11 @@ exports.handler = async function(event, context) {
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ file: out.toString('base64') }),
     };
-
   } catch (err) {
     return {
       statusCode: 500,
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err.message, stack: err.stack }),
     };
   }
 };

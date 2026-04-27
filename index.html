@@ -1,16 +1,26 @@
-<!-- vantage-v47 -->
-<!-- Vantage Pricing Engine v16c - 2026-03-29 -->
+<!-- vantage-v49-encapsulated -->
+<!-- Vantage Pricing Engine v49 - 2026-04-27 -->
+<!-- v49 changes:
+     - Deal Structure (Tigermed / Local CRO) as top-level choice
+     - Indication Tier dropdown drives SAE/SUSAR rates and PI fee default
+     - Date Prepared field replaces volatile =TODAY()
+     - Tigermed targets (B101/B102) split into separate fields
+     - Vendor Management Premium Rate (B103) — 50% Local CRO / 0% Tigermed
+     - Clinical Cost Contingency (B58) — 50% Local CRO / 25% Tigermed
+     - Salary phasing multipliers: startup (B68) / closeout (B77)
+     - PI fee per site (Clinical Costs D63) — population-aware default
+     - Auto-flip defaults on deal_structure / indication_tier change
+     - Updated baseline xlsx (8 sheets including new Vantage Output) embedded in generate-excel.js
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vantage Pricing Engine</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231B6BF5'/><text x='16' y='23' font-family='Arial' font-size='20' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-
 <style>
 /* ── DESIGN TOKENS ─────────────────────────────────────────────── */
 :root {
@@ -620,7 +630,6 @@ main {
     <div class="extract-steps">
       <div class="extract-step"><div class="extract-dot"></div>Parsing document structure</div>
       <div class="extract-step"><div class="extract-dot"></div>Extracting study assumptions</div>
-      <div class="extract-step"><div class="extract-dot"></div>Reading explicit protocol signals</div>
       <div class="extract-step"><div class="extract-dot"></div>Applying phase-tiered formulas</div>
     </div>
   </div>
@@ -689,7 +698,7 @@ main {
   <div class="done-wrap">
     <div class="done-icon">✓</div>
     <div class="done-h">Model Downloaded</div>
-    <div class="done-s">Your 8-sheet Vantage Pricing Model and Assumption Log are ready.</div>
+    <div class="done-s">Your 8-sheet Vantage Pricing Model is ready.</div>
 
     <div class="done-metrics">
       <div class="done-metric">
@@ -721,10 +730,6 @@ main {
 
     <div class="done-actions">
       <button class="btn-ghost" onclick="goTo('review')">← Edit Assumptions</button>
-      <button class="btn-ghost" id="logBtn" onclick="downloadAssumptionLog()" disabled style="opacity:0.5;cursor:not-allowed;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        ⏳ Building log…
-      </button>
       <button class="btn-primary" onclick="resetApp()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New Study
@@ -744,49 +749,57 @@ const FIELDS = [
   {k:"sponsor",       lbl:"Sponsor",                                    grp:"Study Identity",   t:"text",   def:""},
   {k:"phase",         lbl:"Phase",                                      grp:"Study Identity",   t:"text",   def:""},
   {k:"indication",    lbl:"Indication / Disease Area",                  grp:"Study Identity",   t:"text",   def:""},
-  {k:"est_start",     lbl:"Estimated Start",                            grp:"Study Identity",   t:"text",   def:"Q2 2026"},
-  {k:"start_mo",      lbl:"Trial Start Month (1=Jan 12=Dec)",           grp:"Timeline",         t:"number", def:4,      note:"e.g. 4 = April"},
-  {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", def:2026,   note:"Four-digit year"},
+  {k:"indication_tier",lbl:"Indication Tier (drives SAE/SUSAR rates, PI fee)", grp:"Study Identity", t:"select", opts:["Oncology","Cardiology","Other"], def:"Other", note:"Auto-detected from indication; override if needed"},
+  {k:"deal_structure",lbl:"Deal Structure",                             grp:"Study Identity",   t:"select", opts:["Local CRO","Tigermed"], def:"Local CRO", note:"Local CRO = Vantage prime + vendor pass-through; Tigermed = Vantage sub to Tigermed"},
+  {k:"date_prepared", lbl:"Date Prepared",                              grp:"Study Identity",   t:"date",   def:"",     note:"Defaults to today if blank"},
+  {k:"est_start",     lbl:"Estimated Start (display only)",             grp:"Study Identity",   t:"text",   def:"Q1 2027"},
+  {k:"start_mo",      lbl:"Trial Start Month (1=Jan 12=Dec)",           grp:"Timeline",         t:"number", def:1,      note:"e.g. 1 = January"},
+  {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", def:2027,   note:"Four-digit year"},
   {k:"startup_mo",    lbl:"Start-Up Phase (months)",                    grp:"Timeline",         t:"number", def:4,      note:"Site selection, regulatory submissions"},
-  {k:"enroll_mo",     lbl:"Enrollment / Recruitment (months)",          grp:"Timeline",         t:"number", def:8,      note:"Active patient recruitment window"},
-  {k:"treat_mo",      lbl:"Treatment Period (months)",                  grp:"Timeline",         t:"number", def:4,      note:"Last patient in to last patient treatment complete"},
-  {k:"followup_mo",   lbl:"Follow-Up Period (months)",                  grp:"Timeline",         t:"number", def:1},
-  {k:"closeout_mo",   lbl:"Close-Out Period (months)",                  grp:"Timeline",         t:"number", def:2,      note:"Data lock, CSR, TMF transfer"},
-  {k:"kz_sites",      lbl:"Kazakhstan Sites Initiated",                 grp:"Sites & Subjects", t:"number", def:null,   note:"Full Vantage-managed sites"},
-  {k:"sites_feas",    lbl:"Sites Feasibility Assessed",                 grp:"Sites & Subjects", t:"number", def:15},
-  {k:"sites_screen",  lbl:"Sites Screened",                             grp:"Sites & Subjects", t:"number", def:12},
-  {k:"subj_screen",   lbl:"Subjects Screened",                          grp:"Sites & Subjects", t:"number", def:135},
-  {k:"subj_enroll",   lbl:"Subjects Enrolled",                          grp:"Sites & Subjects", t:"number", def:108},
+  {k:"enroll_mo",     lbl:"Enrollment / Recruitment (months)",          grp:"Timeline",         t:"number", def:6,      note:"Active patient recruitment window"},
+  {k:"treat_mo",      lbl:"Treatment Period (months)",                  grp:"Timeline",         t:"number", def:1},
+  {k:"followup_mo",   lbl:"Follow-Up Period (months)",                  grp:"Timeline",         t:"number", def:2},
+  {k:"closeout_mo",   lbl:"Close-Out Period (months)",                  grp:"Timeline",         t:"number", def:1,      note:"Data lock, CSR, TMF transfer"},
+  {k:"kz_sites",      lbl:"Kazakhstan Sites Initiated",                 grp:"Sites & Subjects", t:"number", def:null,   note:"Phase-driven default if blank"},
+  {k:"sites_screen",  lbl:"Sites Screened",                             grp:"Sites & Subjects", t:"number", def:null},
+  {k:"subj_screen",   lbl:"Subjects Screened",                          grp:"Sites & Subjects", t:"number", def:null,   note:"Auto-computed = enrolled x 1.3"},
+  {k:"subj_enroll",   lbl:"Subjects Enrolled",                          grp:"Sites & Subjects", t:"number", def:100},
   {k:"ec_init",       lbl:"Ethics Committee Initial Submissions",       grp:"Regulatory",       t:"number", def:1,      note:"One submission for Kazakhstan"},
-  {k:"ec_annual",     lbl:"Ethics Committee Annual Reports",            grp:"Regulatory",       t:"number", def:2,      note:"One per year while trial is active"},
+  {k:"ec_annual",     lbl:"Ethics Committee Annual Reports",            grp:"Regulatory",       t:"number", def:null,   note:"One per year while trial is active"},
   {k:"ctra",          lbl:"CTRAs Executed",                             grp:"Regulatory",       t:"number", def:null,   note:"One per Kazakhstan site"},
-  {k:"imv_1day",      lbl:"Interim Monitoring Visit - 1 Day",            grp:"Monitoring",       t:"number", def:null,   note:"Computed from phase/sites/timeline"},
+  {k:"imv_1day",      lbl:"Interim Monitoring Visit - 1 Day",           grp:"Monitoring",       t:"number", def:null,   note:"Computed from phase/sites/timeline"},
   {k:"imv_2day",      lbl:"Interim Monitoring Visits 2 Days",           grp:"Monitoring",       t:"number", def:null},
   {k:"rmv",           lbl:"Remote Monitoring Visits",                   grp:"Monitoring",       t:"number", def:null,   note:"Computed from phase/sites/timeline"},
   {k:"siv",           lbl:"Site Initiation Visits",                     grp:"Monitoring",       t:"number", def:null,   note:"= sites initiated"},
   {k:"cov",           lbl:"Site Close-Out Visits",                      grp:"Monitoring",       t:"number", def:null},
   {k:"co_mon",        lbl:"Co-Monitoring Visits",                       grp:"Monitoring",       t:"number", def:null},
   {k:"tmf_qc",        lbl:"TMF QC Visits",                              grp:"Monitoring",       t:"number", def:null},
-  {k:"sae",           lbl:"SAE Reports",                                grp:"Monitoring",       t:"number", def:null},
-  {k:"susar",         lbl:"SUSAR Reports",                              grp:"Monitoring",       t:"number", def:null},
+  {k:"sae",           lbl:"SAE Reports",                                grp:"Monitoring",       t:"number", def:null,   note:"Auto-computed from indication tier"},
+  {k:"susar",         lbl:"SUSAR Reports",                              grp:"Monitoring",       t:"number", def:null,   note:"Auto-computed from indication tier"},
   {k:"sig_issues",    lbl:"Significant Issue Communications",           grp:"Monitoring",       t:"number", def:null},
   {k:"tc_sponsor",    lbl:"Teleconferences with Sponsor",               grp:"PM & Safety",      t:"number", def:null},
   {k:"tc_internal",   lbl:"Internal CRO Project TCs",                   grp:"PM & Safety",      t:"number", def:null},
   {k:"site_pay",      lbl:"Site Payments Processed",                    grp:"PM & Safety",      t:"number", def:null,   note:"Quarterly x sites"},
   {k:"periodic_saf",  lbl:"Periodic Safety Reports",                    grp:"PM & Safety",      t:"number", def:null},
-  {k:"tigermed_ms",     lbl:"Tigermed Target — Total Management Services (USD)", grp:"Financial", t:"number", def:null, note:"From Tigermed proposal — enter manually"},
-  {k:"tigermed_clinical",lbl:"Tigermed Target — Total Clinical Trial Services (USD)", grp:"Financial", t:"number", def:null, note:"From Tigermed proposal — enter manually"},
-  {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", def:1.45,   note:"Revenue = Tigermed x Markup, e.g. 1.45"},
-  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.1,    note:"Portion billed at contract signing"},
+  {k:"markup",        lbl:"Clinical Services Markup Multiple",          grp:"Financial",        t:"number", def:2.0,    note:"Local CRO default 2.0 / Tigermed default 1.45"},
+  {k:"clin_upfront",  lbl:"Clinical Revenue Upfront % at signing",      grp:"Financial",        t:"number", def:0.10,   note:"Portion billed at contract signing (decimal, e.g. 0.10 = 10%)"},
+  {k:"clin_contingency",lbl:"Clinical Cost Contingency %",              grp:"Financial",        t:"number", def:0.5,    note:"Local CRO default 0.5 / Tigermed default 0.25"},
+  {k:"vendor_mgmt_premium_rate",lbl:"Vendor Management Premium Rate %", grp:"Financial",        t:"number", def:0.5,    note:"Buffer on total MS subtotals. Local CRO 0.5 / Tigermed 0"},
+  {k:"pi_fee",        lbl:"PI Fee per Site (USD, flat retainer)",       grp:"Financial",        t:"number", def:2000,   note:"Healthy vol/Other = $2,000; Oncology = $4,000"},
   {k:"kz_ops_mo",     lbl:"KZ In-Country Operations per Month",         grp:"Financial",        t:"number", def:2500,   note:"Active during startup and enrollment"},
-  {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number", def:4000},
-  {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number", def:4000},
-  {k:"sal_almas",     lbl:"Almas salary monthly USD",                   grp:"Team Salaries",    t:"number", def:4000},
-  {k:"sal_didar",     lbl:"Didar salary monthly USD",                   grp:"Team Salaries",    t:"number", def:1000},
-  {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number", def:4000},
+  {k:"tigermed_target_ms",      lbl:"Tigermed Target — Total Management Services (USD)",     grp:"Financial", t:"number", def:0, note:"Only used when Deal Structure = Tigermed"},
+  {k:"tigermed_target_clinical",lbl:"Tigermed Target — Total Clinical Trial Services (USD)", grp:"Financial", t:"number", def:0, note:"Only used when Deal Structure = Tigermed"},
+  {k:"sal_charlie",   lbl:"Charlie salary monthly USD",                 grp:"Team Salaries",    t:"number", def:5000},
+  {k:"sal_zach",      lbl:"Zach salary monthly USD",                    grp:"Team Salaries",    t:"number", def:5000},
+  {k:"sal_almas",     lbl:"Almas salary monthly USD",                   grp:"Team Salaries",    t:"number", def:5000},
+  {k:"sal_didar",     lbl:"Didar salary monthly USD",                   grp:"Team Salaries",    t:"number", def:2000},
+  {k:"sal_alex",      lbl:"Alex salary monthly USD",                    grp:"Team Salaries",    t:"number", def:5000},
   {k:"sal_alexander", lbl:"Alexander salary monthly USD",               grp:"Team Salaries",    t:"number", def:1000},
-  {k:"sal_shynar",    lbl:"Shynar salary monthly USD",                  grp:"Team Salaries",    t:"number", def:1000},
-  {k:"ciprian_pct",   lbl:"Ciprian Commission Rate",                    grp:"OpEx",             t:"number", def:0.05,   note:"Applied to all revenue each month"},
+  {k:"sal_shynar",    lbl:"Shynar salary monthly USD",                  grp:"Team Salaries",    t:"number", def:2000},
+  {k:"startup_sal_mult",lbl:"Startup Phase Salary Multiplier",          grp:"Team Salaries",    t:"number", def:0.6,    note:"Applied during startup months (e.g. 0.6 = 60%)"},
+  {k:"closeout_sal_mult",lbl:"Closeout Phase Salary Multiplier",        grp:"Team Salaries",    t:"number", def:1.0,    note:"Applied during closeout months"},
+  {k:"referral_pct",  lbl:"Referral Partner Commission Rate",           grp:"OpEx",             t:"number", def:0,      note:"Decimal, e.g. 0.005 = 0.5%. Set to 0 if no referral"},
+  {k:"referral_name", lbl:"Referral Partner Name (optional)",           grp:"OpEx",             t:"text",   def:""},
   {k:"insurance_mo",  lbl:"Insurance monthly USD",                      grp:"OpEx",             t:"number", def:200},
   {k:"tech_mo",       lbl:"Technology Stack monthly USD",               grp:"OpEx",             t:"number", def:500},
   {k:"travel_m1",     lbl:"Travel and Accommodation Month 1",           grp:"OpEx",             t:"number", def:1000},
@@ -802,6 +815,23 @@ let activeGrp = GROUPS[0];
 FIELDS.forEach(f=>{ A[f.k]=f.def; });
 // ── DERIVED DEFAULTS (Tigermed methodology) ───────────────────────
 function computeDerivedDefaults() {
+  // ── Deal Structure auto-flip: applies defaults only if not explicitly set ──
+  const dealStructure = (A.deal_structure === 'Tigermed') ? 'Tigermed' : 'Local CRO';
+  A.deal_structure = dealStructure;
+  const isLocalCRO = dealStructure === 'Local CRO';
+
+  // ── Indication Tier auto-detect from indication string (user can override) ──
+  if (!A.indication_tier) {
+    const ind = String(A.indication || '').toLowerCase();
+    const isOnco   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
+    const isCardio = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
+    A.indication_tier = isOnco ? 'Oncology' : isCardio ? 'Cardiology' : 'Other';
+  }
+  const tierIsOnco   = A.indication_tier === 'Oncology';
+  const tierIsCardio = A.indication_tier === 'Cardiology';
+  const saeRate   = tierIsOnco ? 0.30 : tierIsCardio ? 0.05 : 0.10;
+  const susarRate = tierIsOnco ? 0.10 : 0.05;
+
   // Derive kz_sites from phase if not explicitly extracted
   if (!A.kz_sites) {
     const is3 = /phase\s*3|phase\s*iii/i.test(A.phase||'');
@@ -809,17 +839,16 @@ function computeDerivedDefaults() {
     A.kz_sites = is3 ? 10 : is2 ? 5 : 3; // Phase 1/1b = 3, Phase 2 = 5, Phase 3 = 10
   }
   const sites   = Number(A.kz_sites);
-  const enroll  = Number(A.enroll_mo)   || 8;
-  const treat   = Number(A.treat_mo)    || 4;
-  const followup= Number(A.followup_mo) || 1;
-  const closeout= Number(A.closeout_mo) || 2;
+  const enroll  = Number(A.enroll_mo)   || 6;
+  const treat   = Number(A.treat_mo)    || 1;
+  const followup= Number(A.followup_mo) || 2;
+  const closeout= Number(A.closeout_mo) || 1;
   const startup = Number(A.startup_mo)  || 4;
   const total   = startup + enroll + treat + followup + closeout;
-  const subj    = Number(A.subj_enroll) || 30;
-  const ind     = String(A.indication||'').toLowerCase();
+  const subj    = Number(A.subj_enroll) || 100;
 
   function setIfNull(k, val) {
-    if (A[k] === null || A[k] === undefined || A[k] === 0) {
+    if (A[k] === null || A[k] === undefined || A[k] === 0 || A[k] === '') {
       A[k] = Math.max(0, Math.round(val));
     }
   }
@@ -837,7 +866,7 @@ function computeDerivedDefaults() {
     setIfNull('imv_2day', Math.ceil(treat / 2) * sites);
     setIfNull('rmv',      sites * (enroll + treat + followup) * 0.5);
   } else {
-    // Phase 1/1b default (monthly during enrollment & follow-up, bi-monthly treatment)
+    // Phase 1/1b default
     setIfNull('imv_1day', sites * (enroll + followup) * 1.0 + sites * treat * 0.5);
     setIfNull('imv_2day', 0);
     setIfNull('rmv',      sites * (enroll + followup) * 1.0 + sites * treat * 0.5);
@@ -847,10 +876,7 @@ function computeDerivedDefaults() {
   setIfNull('co_mon', sites);
   setIfNull('tmf_qc', Math.max(1, Math.round(total / 6)));
 
-  const isOnco  = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
-  const isCardio= /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
-  const saeRate  = isOnco ? 0.30 : isCardio ? 0.05 : 0.10;
-  const susarRate= isOnco ? 0.10 : 0.05;
+  // Indication-tier-driven SAE/SUSAR
   setIfNull('sae',       Math.round(subj * saeRate * 3));
   setIfNull('susar',     Math.round(subj * susarRate));
   setIfNull('sig_issues',Math.max(3, Math.round(sites * 0.5)));
@@ -861,12 +887,44 @@ function computeDerivedDefaults() {
   setIfNull('periodic_saf',Math.max(1, Math.ceil(total / 12)));
 
   // Always recompute these — not extracted, always derived from kz_sites + timeline
-  A.sites_feas   = sites * 2;
   A.sites_screen = Math.round(sites * 1.5);
   A.ctra         = sites;
   A.ec_annual    = Math.max(1, Math.ceil(total / 12));
-  // subj_screen: always computed from enrolled (1.3x ratio) — never extracted from synopsis
+  // subj_screen: always computed from enrolled (1.3x ratio) — never extracted
   A.subj_screen = Math.round(subj * 1.3);
+}
+
+// Apply deal-structure-driven defaults (called on deal_structure change too)
+function applyDealStructureDefaults() {
+  const isLocalCRO = A.deal_structure !== 'Tigermed';
+  // Only apply if user hasn't set them yet (or has them at known previous defaults)
+  if (A.markup === undefined || A.markup === null || A.markup === '' ||
+      A.markup === 1.45 || A.markup === 2.0) {
+    A.markup = isLocalCRO ? 2.0 : 1.45;
+  }
+  if (A.clin_contingency === undefined || A.clin_contingency === null || A.clin_contingency === '' ||
+      A.clin_contingency === 0.25 || A.clin_contingency === 0.5) {
+    A.clin_contingency = isLocalCRO ? 0.5 : 0.25;
+  }
+  if (A.vendor_mgmt_premium_rate === undefined || A.vendor_mgmt_premium_rate === null || A.vendor_mgmt_premium_rate === '' ||
+      A.vendor_mgmt_premium_rate === 0 || A.vendor_mgmt_premium_rate === 0.5) {
+    A.vendor_mgmt_premium_rate = isLocalCRO ? 0.5 : 0;
+  }
+}
+
+// Apply indication-tier-driven defaults (PI fee, recompute SAE/SUSAR)
+function applyIndicationTierDefaults() {
+  const tier = A.indication_tier || 'Other';
+  const isOnco = tier === 'Oncology';
+  // PI fee default by tier
+  if (A.pi_fee === undefined || A.pi_fee === null || A.pi_fee === '' ||
+      A.pi_fee === 2000 || A.pi_fee === 4000) {
+    A.pi_fee = isOnco ? 4000 : 2000;
+  }
+  // Recompute SAE/SUSAR with new tier
+  A.sae = null;
+  A.susar = null;
+  computeDerivedDefaults();
 }
 computeDerivedDefaults(); // run once at startup with FIELDS defaults
 
@@ -942,38 +1000,19 @@ async function handleFile(f){
       console.log('[Vantage] Text file read, length:', content.length);
     }
 
-    document.getElementById('spinFile').textContent='Claude is reading '+f.name+' — extracting assumptions & protocol signals…';
-    console.log('[Vantage] Calling Claude API (parallel: assumptions + signals)…');
-
-    const [exResult, sigResult] = await Promise.allSettled([
-      extractFromSynopsis(content, ftype),
-      extractProtocolSignals(content, ftype)
-    ]);
-
-    if (exResult.status === 'rejected') throw exResult.reason;
-    const ex = exResult.value;
+    document.getElementById('spinFile').textContent='Claude is extracting assumptions from '+f.name+'…';
+    console.log('[Vantage] Calling Claude API…');
+    const ex=await extractFromSynopsis(content, ftype);
     console.log('[Vantage] Extraction result:', ex);
 
-    const signals = sigResult.status === 'fulfilled' ? sigResult.value : null;
-    if (sigResult.status === 'rejected') console.warn('[Vantage] Signal extraction failed (non-fatal):', sigResult.reason.message);
-    else console.log('[Vantage] Signal result:', signals);
-
-    // Apply extracted fields
     FIELDS.forEach(field=>{
       if(ex[field.k]!==undefined && ex[field.k]!==null && ex[field.k]!==''){
         A[field.k]=ex[field.k];
       }
     });
-
-    // Reset derived fields so they recompute fresh
+    // Reset derived fields so they recompute fresh from extracted kz_sites/enroll_mo etc.
     ['imv_1day','imv_2day','rmv','siv','cov','co_mon','tmf_qc',
      'sae','susar','sig_issues','tc_sponsor','tc_internal','site_pay','periodic_saf'].forEach(k=>{A[k]=null;});
-    A._overrideNotes = [];
-    A._safetyCommittee = null;
-
-    // Apply signal overrides BEFORE formula defaults, so formulas only fill remaining nulls
-    if (signals) applySignalOverrides(signals);
-
     computeDerivedDefaults();
     goTo('review');
 
@@ -999,6 +1038,10 @@ async function extractFromSynopsis(fileContent,fileType){
     '  (interpret "dose escalation" = Phase 1/1b; "dose expansion" = Phase 2; "pivotal" = Phase 3)',
     '  CRITICAL: bioequivalence, crossover, BE study, two-treatment two-period = "Phase 1"',
     '- indication: disease or condition being studied',
+    '- indication_tier: one of "Oncology", "Cardiology", "Other".',
+    '  Oncology = cancer/tumor/leukemia/lymphoma/myeloma/melanoma/glioma/etc.',
+    '  Cardiology = cardiac/heart failure/arrhythmia/cardiomyopathy.',
+    '  Other = healthy volunteers, biosimilar PK studies, dermatology, etc.',
     '',
     'START DATE (be conservative - only extract if explicitly planned, not the document date):',
     '- start_mo (1-12): planned trial start month. ONLY if a future date is explicitly stated.',
@@ -1016,7 +1059,7 @@ async function extractFromSynopsis(fileContent,fileType){
     '',
     'SITES & SUBJECTS:',
     '- kz_sites: Kazakhstan sites Vantage will manage. Sponsors specify patient counts not sites — almost never stated in a synopsis.',
-    '  Only extract if the synopsis explicitly states KZ/Vantage-specific site count. Do NOT infer from global site counts (e.g. "50 sites worldwide" is irrelevant).',
+    '  Only extract if the synopsis explicitly states KZ/Vantage-specific site count. Do NOT infer from global site counts.',
     '  Return null in virtually all cases.',
     '- subj_enroll: total subjects to be enrolled (use the global randomized/enrolled number)',
     '- subj_screen: DO NOT extract. Return null always. Will be computed from enrolled count.',
@@ -1028,12 +1071,10 @@ async function extractFromSynopsis(fileContent,fileType){
     'imv_1day, imv_2day, rmv, siv, cov, co_mon, tmf_qc,',
     'sae, susar, sig_issues,',
     'tc_sponsor, tc_internal, site_pay, periodic_saf,',
-    'ec_annual, ctra, sites_feas, sites_screen',
-    '',
-    '=== FIXED DEFAULTS - always return these exact values ===',
-    '- markup: 1.45',
-    '- clin_upfront: 0.1',
-    '- kz_ops_mo: 2500',
+    'ec_annual, ctra, sites_screen,',
+    'deal_structure, markup, clin_upfront, clin_contingency, vendor_mgmt_premium_rate, pi_fee, kz_ops_mo,',
+    'tigermed_target_ms, tigermed_target_clinical, date_prepared,',
+    'sal_*, startup_sal_mult, closeout_sal_mult, referral_pct, insurance_mo, tech_mo, travel_m1, legal_m1, audit_annual',
     '',
     'Return JSON only. No prose, no markdown, no code fences.'
   ];
@@ -1060,201 +1101,6 @@ async function extractFromSynopsis(fileContent,fileType){
   const clean=txt.replace(/```json|```/g,'').trim();
   try{return JSON.parse(clean);}
   catch{throw new Error('Could not parse AI response as JSON: '+txt.slice(0,200));}
-}
-
-// ── PROTOCOL SIGNAL EXTRACTION ───────────────────────
-async function extractProtocolSignals(fileContent, fileType) {
-  const sys = [
-    'You are a clinical trial operations analyst. Read this protocol and extract ONLY explicitly stated operational signals.',
-    'Do NOT infer or estimate — return null for anything not explicitly stated in the document.',
-    '',
-    'Return ONLY valid JSON with this exact structure:',
-    '{',
-    '  "monitoring_freq": null,         // e.g. "monthly during enrollment", "every 6 weeks", null if not stated',
-    '  "monitoring_cadence_imv": null,   // explicit number of on-site monitoring visits per site per year, or null',
-    '  "remote_monitoring_freq": null,   // e.g. "bi-weekly remote review", null if not stated',
-    '  "safety_committee": null,         // "DSMB", "IDMC", "DMC", "Safety Review Committee", or null if none stated',
-    '  "tc_freq_sponsor": null,          // explicit teleconference frequency e.g. "monthly", "bi-weekly", null',
-    '  "susar_reporting_required": null, // true if document explicitly requires SUSAR reporting, false if explicitly excluded, null if not mentioned',
-    '  "sae_rate_pct": null,             // explicit expected SAE rate as a number (e.g. 30 for 30%), null if not stated',
-    '  "notes": []                       // array of human-readable strings explaining each non-null signal found',
-    '}',
-    '',
-    'Examples of explicit signals (EXTRACT these):',
-    '  "Sites will be monitored monthly during enrollment"',
-    '  "A DSMB will convene every 6 months"',
-    '  "Sponsor teleconferences will be held bi-weekly"',
-    '',
-    'Examples of things to IGNORE (return null):',
-    '  General ICH E6 or GCP references',
-    '  Vague language like "adequate monitoring"',
-    '  Anything about global site counts or non-KZ operations',
-    '',
-    'Return JSON only. No prose, no markdown, no code fences.'
-  ].join('\n');
-
-  let userContent;
-  if (fileType === 'pdf') {
-    userContent = [
-      { type: 'text', text: 'Extract explicit operational monitoring and safety signals from this protocol. Return JSON only.' },
-      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileContent } }
-    ];
-  } else {
-    userContent = 'Extract explicit operational signals:\n\n' + fileContent + '\n\nReturn JSON only.';
-  }
-
-  const resp = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: sys, messages: [{ role: 'user', content: userContent }] })
-  });
-  if (!resp.ok) throw new Error('Signal API error ' + resp.status);
-  const data = await resp.json();
-  const txt = (data.content || []).map(b => b.text || '').join('');
-  const clean = txt.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
-}
-
-// ── APPLY SIGNAL OVERRIDES ────────────────────────────
-function applySignalOverrides(signals) {
-  if (!signals || typeof signals !== 'object') return;
-  A._overrideNotes = A._overrideNotes || [];
-
-  const sites   = Number(A.kz_sites) || 3;
-  const enroll  = Number(A.enroll_mo) || 8;
-  const treat   = Number(A.treat_mo) || 4;
-  const followup= Number(A.followup_mo) || 1;
-  const total   = (Number(A.startup_mo)||4) + enroll + treat + followup + (Number(A.closeout_mo)||2);
-
-  // Monitoring frequency → IMV count override
-  if (signals.monitoring_cadence_imv !== null && signals.monitoring_cadence_imv !== undefined) {
-    const visitsPerSitePerYear = Number(signals.monitoring_cadence_imv);
-    if (!isNaN(visitsPerSitePerYear) && visitsPerSitePerYear > 0) {
-      const activeMonths = enroll + treat + followup;
-      A.imv_1day = Math.round(sites * visitsPerSitePerYear * (activeMonths / 12));
-      A._overrideNotes.push(`IMV (1-day) overridden to ${A.imv_1day} — protocol specifies ${visitsPerSitePerYear} on-site visits/site/year across ${activeMonths} active months at ${sites} sites.`);
-    }
-  } else if (signals.monitoring_freq) {
-    const freq = signals.monitoring_freq.toLowerCase();
-    let visitsPerMonth = null;
-    if (/monthly|every month|once a month/.test(freq)) visitsPerMonth = 1;
-    else if (/bi.?weekly|every (two|2) weeks|fortnightly/.test(freq)) visitsPerMonth = 0.5;
-    else if (/every (six|6) weeks/.test(freq)) visitsPerMonth = 0.38;
-    else if (/quarterly|every (three|3) months/.test(freq)) visitsPerMonth = 0.33;
-    else if (/every (two|2) months|bi.?monthly/.test(freq)) visitsPerMonth = 0.5;
-
-    if (visitsPerMonth !== null) {
-      const activeMonths = enroll + treat + followup;
-      A.imv_1day = Math.round(sites * visitsPerMonth * activeMonths);
-      A._overrideNotes.push(`IMV (1-day) overridden to ${A.imv_1day} — protocol states "${signals.monitoring_freq}" (${visitsPerMonth.toFixed(2)} visits/site/month × ${activeMonths} months × ${sites} sites).`);
-    }
-  }
-
-  // TC frequency override
-  if (signals.tc_freq_sponsor) {
-    const freq = signals.tc_freq_sponsor.toLowerCase();
-    let tcPerMonth = null;
-    if (/monthly/.test(freq)) tcPerMonth = 1;
-    else if (/bi.?weekly|every (two|2) weeks/.test(freq)) tcPerMonth = 2;
-    else if (/weekly/.test(freq)) tcPerMonth = 4;
-    else if (/quarterly/.test(freq)) tcPerMonth = 0.33;
-
-    if (tcPerMonth !== null) {
-      A.tc_sponsor = Math.round(tcPerMonth * total);
-      A.tc_internal = Math.round(A.tc_sponsor * 2);
-      A._overrideNotes.push(`Sponsor TCs overridden to ${A.tc_sponsor} — protocol specifies "${signals.tc_freq_sponsor}" TCs (${tcPerMonth}/month × ${total} months). Internal TCs = ${A.tc_internal}.`);
-    }
-  }
-
-  // SUSAR flag
-  if (signals.susar_reporting_required === false) {
-    A.susar = 0;
-    A._overrideNotes.push('SUSAR set to 0 — protocol explicitly states SUSAR reporting is not required for this study.');
-  }
-
-  // SAE rate override
-  if (signals.sae_rate_pct !== null && signals.sae_rate_pct !== undefined) {
-    const rate = Number(signals.sae_rate_pct) / 100;
-    if (!isNaN(rate) && rate > 0) {
-      const subj = Number(A.subj_enroll) || 30;
-      A.sae = Math.round(subj * rate * 3);
-      A._overrideNotes.push(`SAE count overridden to ${A.sae} — protocol states expected SAE rate of ${signals.sae_rate_pct}% (${subj} subjects × ${signals.sae_rate_pct}% × 3 reports/SAE).`);
-    }
-  }
-
-  // Safety committee type — store as metadata, no numeric override
-  if (signals.safety_committee) {
-    A._safetyCommittee = signals.safety_committee;
-    A._overrideNotes.push(`Safety committee: Protocol specifies a ${signals.safety_committee}. Periodic safety reports may need adjustment manually.`);
-  }
-
-  // Append any notes from the signal call itself
-  if (Array.isArray(signals.notes)) {
-    signals.notes.forEach(n => {
-      if (n && !A._overrideNotes.some(x => x === n)) A._overrideNotes.push('Protocol signal: ' + n);
-    });
-  }
-}
-
-// ── ASSUMPTION LOG (Word .docx via Netlify function) ─
-let _assumptionLogBlob = null;
-let _assumptionLogName = '';
-
-async function generateAssumptionLog() {
-  _assumptionLogBlob = null;
-  const logBtn = document.getElementById('logBtn');
-  if (logBtn) { logBtn.disabled = true; logBtn.textContent = '⏳ Building log…'; }
-  try {
-    // Generate study context narrative via Claude API
-    let studyContext = '';
-    try {
-      const ctxResp = await fetch('/api/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 400,
-          system: 'You are a clinical trial analyst at Vantage Clinical Trials, a Kazakhstan CRO. Write a concise 3-4 sentence study context paragraph for an assumption log. Cover: what the study is testing, patient population, Vantage\'s scope (Kazakhstan only), and any key operational characteristics (e.g. dose escalation structure, high-toxicity regimen, safety committee type) that affect the pricing assumptions. Be factual and specific. No bullet points, plain prose only.',
-          messages: [{ role: 'user', content: `Study: ${A.study_name || 'Unknown'}\nSponsor: ${A.sponsor || 'Unknown'}\nPhase: ${A.phase || 'Unknown'}\nIndication: ${A.indication || 'Unknown'}\nSafety committee: ${A._safetyCommittee || 'not specified'}\nSites: ${A.kz_sites || 3}\nSubjects: ${A.subj_enroll || 30}\nDuration: ${(Number(A.startup_mo)||0)+(Number(A.enroll_mo)||0)+(Number(A.treat_mo)||0)+(Number(A.followup_mo)||0)+(Number(A.closeout_mo)||0)} months\n\nWrite the study context paragraph.` }]
-        })
-      });
-      if (ctxResp.ok) {
-        const ctxData = await ctxResp.json();
-        studyContext = (ctxData.content || []).map(b => b.text || '').join('').trim();
-      }
-    } catch(e) { console.warn('[Vantage] Study context generation failed (non-fatal):', e.message); }
-
-    const resp = await fetch('/.netlify/functions/generate-word', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...A, _studyContext: studyContext })
-    });
-    if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || 'Server error ' + resp.status); }
-    const data = await resp.json();
-    const binary = atob(data.file);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    _assumptionLogBlob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    _assumptionLogName = 'Vantage_Assumption_Log_' + (A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40) + '.docx';
-    if (logBtn) {
-      logBtn.disabled = false;
-      logBtn.className = 'btn-primary';
-      logBtn.removeAttribute('style');
-      logBtn.textContent = '⬇ Download Assumption Log (.docx)';
-    }
-    console.log('[Vantage] Assumption log ready.');
-  } catch(err) {
-    console.error('[Vantage] Assumption log failed:', err.message);
-    if (logBtn) { logBtn.disabled = false; logBtn.textContent = '⚠ Log failed: ' + err.message.slice(0,60); }
-  }
-}
-
-function downloadAssumptionLog() {
-  if (!_assumptionLogBlob) { alert('Assumption log is still being prepared — please try again in a moment.'); return; }
-  const url = URL.createObjectURL(_assumptionLogBlob);
-  const a = document.createElement('a');
-  a.href = url; a.download = _assumptionLogName; a.click();
-  URL.revokeObjectURL(url);
 }
 
 // ── HELPERS ──────────────────────────────────────────
@@ -1369,53 +1215,77 @@ function buildServices(){
   return {sections:svc,grand};
 }
 
-function calcMgmtFee(){
-  // Mirrors _D105 in generate-excel.js exactly — verified against Excel line items
-  const s  =n('kz_sites');
-  const s_s=n('sites_screen');
-  const s_f=n('sites_feas');
-  const ec =n('ec_init')||1;
-  const eca=n('ec_annual')||1;
-  const su =n('startup_mo');
-  const en =n('enroll_mo');
-  const tr =n('treat_mo');
-  const fo =n('followup_mo');
-  const cl =n('closeout_mo');
+// vantageCalcMS — line-item replica of baseline_v2.xlsx Management Services sheet.
+// MUST stay in sync with the same function in generate-excel.js. This is the source
+// of truth for the in-page preview banner.
+function vantageCalcMS(input){
+  const A=input||{};
+  const isLocalCRO=(A.deal_structure||'Local CRO')==='Local CRO';
+  const num=k=>Number(A[k])||0;
+  const su=num('startup_mo'), en=num('enroll_mo'), tr=num('treat_mo'),
+        fo=num('followup_mo'), cl=num('closeout_mo');
+  const tot=su+en+tr+fo+cl;
   const sut=su+en+tr;
-  const i1 =n('imv_1day');
-  const rmv=n('rmv');
-  const siv=n('siv')||s;
-  const cov=n('cov')||s;
-  const sae=n('sae');
-  const sus=n('susar');
-  const sig=n('sig_issues')||0;
-  const tcs=n('tc_sponsor')||0;
-  const tci=n('tc_internal')||0;
-  const sp =n('site_pay')||0;
-  const ps =n('periodic_saf')||0;
-  const _gtPM  = 1100+3000+800*s+2500+5000+850+100+500+2000;
-  const _gtSS  = 650+1500+500*s_s+250*s_f+2000*s+2500+250+500+1000+500+250+
-                 2500*s+1000+4000*ec+5000+5000+500*ec+2500*eca+5000+500+500+3500+3000+1000*s;
-  const _gtLab = 1500+3500+300*sut+3500+300*sut;
-  const _gtCM  = 2500*siv+1500*i1+750*rmv+500*en*s+250*sig+150*sig+500+500+
-                 200*sae+150*sus+250*sus+150*en*s+2500*cov;
-  const _gtPMR = 500*sut+250*sut+250*sut*2+5000+200*sp+250*s*sut+5000+500+3000+2500;
-  const _gtMT  = 10000+1500+500+7000+1000+2000+500*tcs+350*tci+15000+100*ps*4;
-  const _gtIP  = 300+2500+250*s*3;
-  const _gtCO  = 1000+10000;
-  return _gtPM+_gtSS+_gtLab+_gtCM+_gtPMR+_gtMT+_gtIP+_gtCO;
+  const s=num('kz_sites')||3;
+  const subj=num('subj_enroll');
+  const s_f=(subj&&s)?Math.round(subj/s):0;
+  const s_s=num('sites_screen')||Math.round(s*1.5);
+  const ec=num('ec_init')||1;
+  const eca=num('ec_annual')||Math.max(1,Math.ceil(tot/12));
+  const i1=num('imv_1day'), i2=num('imv_2day'), rmv=num('rmv');
+  const sae=num('sae'), sus=num('susar'), sig=num('sig_issues');
+  const tcs=num('tc_sponsor'), tci=num('tc_internal'), sp=num('site_pay');
+
+  const sub_D13 =1100+3000+800*s+2500+5000+850+100+500+2000;
+  const sub_D41 =500*s_s+650*s_s+1500+250*s_f+2000*s+2500*s+250*s+500*s+1000*s
+                +500+250*s+2500*s+1000*s+0
+                +4000*ec+5000+5000+500*ec+2500*eca+5000+500+500+3500+3000+1000*s;
+  const sub_D49 =1500+3500+200*sut+3500+200*sut;
+  const sub_D66 =3250*s+1500*i1+1250*i2+750*rmv+500*en*s+250*sig+150*sig
+                +500+500+300*sae+150*sus+250*sus+150*en*s+3000*s;
+  const sub_D79 =500*sut+250*sut+250*sut*2+7000+200*sp+250*sut*s+5000+500+3000+2500;
+  const sub_D92 =5000*2+1500+500+8500+1000+2000+400*tcs+250*tci+9000*s+400*Math.ceil(tot/2);
+  const sub_D98 =300+2500+250*s*3;
+  const sub_D103=1000+13000;
+
+  const subtotalsSum=sub_D13+sub_D41+sub_D49+sub_D66+sub_D79+sub_D92+sub_D98+sub_D103;
+  const premium=isLocalCRO?subtotalsSum*(num('vendor_mgmt_premium_rate')):0;
+  return {subtotalsSum, premium, mgmtFee:subtotalsSum+premium};
+}
+
+function calcMgmtFee(){
+  return vantageCalcMS(A).mgmtFee;
 }
 
 function calcEstimate(mgmtFeeOverride){
   const grand=mgmtFeeOverride!=null?mgmtFeeOverride:calcMgmtFee();
-  // Clinical revenue matches Excel Clinical Costs sheet: (PER_PATIENT * subj_enroll + kz_sites * SITE_FEE) * markup
-  const PER_PATIENT=11762.5, SITE_FEE=2000;
-  const cro=(PER_PATIENT*n('subj_enroll'))+(SITE_FEE*n('kz_sites'));
+
+  // Clinical revenue mirrors baseline Clinical Costs tab:
+  //   procedures = (per-patient × subj_enroll) + contingency-buffered
+  //   PI fee     = pi_fee × kz_sites
+  //   total      = (procedures + PI) × markup
+  // Per-patient cost in baseline (Plenty healthy-vol Phase 1) is a fixed schedule;
+  // we use an approximation here. The Excel model is the source of truth for the precise figure.
+  const PER_PATIENT_BASE=1175;  // approx. healthy-vol Phase 1 procedures per patient
+  const subj=n('subj_enroll');
+  const s=n('kz_sites');
+  const procBase=PER_PATIENT_BASE*subj;
+  const proc=procBase*(1+n('clin_contingency'));
+  const piFee=n('pi_fee')*s;
+  const cro=proc+piFee;
   const clinRev=cro*n('markup');
   const totRev=grand+clinRev;
+
+  // Operating costs — match baseline IO B15 logic (KZ ops × (enroll+1) + tech × tot + insurance × tot + travel + legal + audit ceiling)
   const salaries=n('sal_charlie')+n('sal_zach')+n('sal_almas')+n('sal_didar')+n('sal_alex')+n('sal_alexander')+n('sal_shynar');
   const tm=totalMo();
-  const opex=salaries*tm+grand*n('ciprian_pct')+n('insurance_mo')*tm+n('tech_mo')*tm+n('travel_m1')+n('legal_m1')+n('kz_ops_mo')*(n('startup_mo')+n('enroll_mo'));
+  // Apply phase-aware salary scaling (rough approx of baseline P&L row 8):
+  const su=n('startup_mo'), cl=n('closeout_mo');
+  const activeMo=tm-su-cl;
+  const salaryTotal=salaries*(su*n('startup_sal_mult') + activeMo + cl*n('closeout_sal_mult'));
+  const opex=salaryTotal+grand*n('referral_pct')+n('insurance_mo')*tm+n('tech_mo')*tm
+            +n('travel_m1')+n('legal_m1')+n('kz_ops_mo')*(n('enroll_mo')+1)
+            +n('audit_annual')*Math.max(1,Math.ceil(tm/12));
   return {grand,clinRev,totRev,ebitda:totRev-cro-opex};
 }
 
@@ -1452,18 +1322,54 @@ function updateBanner(){
 function renderFields(){
   const grid=document.getElementById('fieldGrid');
   grid.innerHTML='';
-  FIELDS.filter(f=>f.grp===activeGrp).forEach(field=>{
+  // When viewing Financial group, hide Tigermed-target fields if not Tigermed deal
+  const visibleFields = FIELDS.filter(f=>{
+    if (f.grp !== activeGrp) return false;
+    if ((f.k === 'tigermed_target_ms' || f.k === 'tigermed_target_clinical') && A.deal_structure !== 'Tigermed') return false;
+    return true;
+  });
+  visibleFields.forEach(field=>{
     const div=document.createElement('div');div.className='fi';
     const lbl=document.createElement('label');lbl.textContent=field.lbl;
     if(field.note){const s=document.createElement('span');s.className='fnote';s.textContent=' -- '+field.note;lbl.appendChild(s);}
-    const inp=document.createElement('input');
-    inp.type=field.t==='number'?'number':'text';
-    if(field.t==='number') inp.step=field.k.includes('pct')||field.k.includes('markup')||field.k.includes('upfront')?'0.001':'1';
-    inp.value=A[field.k]??'';
-    inp.addEventListener('input',e=>{
-      A[field.k]=field.t==='number'?(parseFloat(e.target.value)||0):e.target.value;
-      updateBanner();updateEstimate();
-    });
+    let inp;
+    if(field.t==='select' && field.opts){
+      inp=document.createElement('select');
+      field.opts.forEach(opt=>{
+        const o=document.createElement('option');
+        o.value=opt; o.textContent=opt;
+        if(A[field.k]===opt) o.selected=true;
+        inp.appendChild(o);
+      });
+      inp.addEventListener('change',e=>{
+        A[field.k]=e.target.value;
+        if(field.k==='deal_structure'){
+          applyDealStructureDefaults();
+          renderFields(); // re-render to show/hide tigermed targets and reflect new defaults
+        } else if(field.k==='indication_tier'){
+          applyIndicationTierDefaults();
+          renderFields(); // re-render to reflect new PI fee, SAE, SUSAR
+        }
+        updateBanner();updateEstimate();
+      });
+    } else if(field.t==='date'){
+      inp=document.createElement('input');
+      inp.type='date';
+      inp.value=A[field.k]||'';
+      inp.addEventListener('input',e=>{
+        A[field.k]=e.target.value;
+        updateBanner();updateEstimate();
+      });
+    } else {
+      inp=document.createElement('input');
+      inp.type=field.t==='number'?'number':'text';
+      if(field.t==='number') inp.step=field.k.includes('pct')||field.k.includes('markup')||field.k.includes('upfront')||field.k.includes('contingency')||field.k.includes('mult')||field.k.includes('rate')?'0.001':'1';
+      inp.value=A[field.k]??'';
+      inp.addEventListener('input',e=>{
+        A[field.k]=field.t==='number'?(parseFloat(e.target.value)||0):e.target.value;
+        updateBanner();updateEstimate();
+      });
+    }
     div.appendChild(lbl);div.appendChild(inp);grid.appendChild(div);
   });
 }
@@ -1475,6 +1381,12 @@ async function generateModel(){
   const btn = document.getElementById('dlBtn');
   if(btn){ btn.disabled=true; btn.textContent='⏳ Generating…'; }
   try {
+    // Ensure date_prepared is set before sending
+    if (!A.date_prepared) {
+      A.date_prepared = new Date().toISOString().slice(0,10);
+    }
+
+    // ── 1. Excel ─────────────────────────────────────────
     const resp = await fetch('/.netlify/functions/generate-excel', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
@@ -1485,6 +1397,8 @@ async function generateModel(){
       throw new Error(err.error || 'Server error '+resp.status);
     }
     const data = await resp.json();
+    const safeName = (A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
+
     // Decode base64 and trigger download
     const binary = atob(data.file);
     const bytes = new Uint8Array(binary.length);
@@ -1492,18 +1406,45 @@ async function generateModel(){
     const blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const fname = 'Vantage_Pricing_'+(A.study_name||'Model').replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)+'.xlsx';
+    const fname = 'Vantage_Pricing_'+safeName+'.xlsx';
     a.href=url; a.download=fname; a.click();
     URL.revokeObjectURL(url);
-    // Pre-build assumption log in background — shown as button on done screen
-    generateAssumptionLog();
-    // Done screen — use server-computed mgmtFee so it matches Excel exactly
+
+    // ── 2. Word log (auto-bundled) — non-fatal if it fails ────────
+    if(btn){ btn.textContent='⏳ Generating Word log…'; }
+    try {
+      const wordResp = await fetch('/.netlify/functions/generate-word', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(A)
+      });
+      if(wordResp.ok){
+        const wordData = await wordResp.json();
+        if(wordData.file){
+          const wb = atob(wordData.file);
+          const wbytes = new Uint8Array(wb.length);
+          for(let i=0;i<wb.length;i++) wbytes[i]=wb.charCodeAt(i);
+          const wblob = new Blob([wbytes], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+          const wurl = URL.createObjectURL(wblob);
+          const wa = document.createElement('a');
+          wa.href=wurl; wa.download='Vantage_Assumption_Log_'+safeName+'.docx';
+          wa.click();
+          URL.revokeObjectURL(wurl);
+        }
+      } else {
+        console.warn('Word log generation failed (non-fatal):', wordResp.status);
+      }
+    } catch(wordErr) {
+      console.warn('Word log fetch error (non-fatal):', wordErr);
+    }
+
+    // Done screen
     const serverMgmt = data.mgmtFee || null;
     const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate(serverMgmt);
     ['dMgmt','dClin','dTotal','dEbitda'].forEach((id,i)=>{document.getElementById(id).textContent=fmt([g,c,t,e][i]);});
     goTo('done');
   } catch(err){
-    alert('Error generating Excel: '+err.message);
+    alert('Error generating model: '+err.message);
     console.error(err);
   } finally {
     if(btn){ btn.disabled=false; btn.textContent='⬇ Download Excel Model'; }
