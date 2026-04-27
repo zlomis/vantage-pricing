@@ -118,24 +118,18 @@ exports.handler = async function(event, context) {
       A.closeout_sal_mult = 1.0;
     }
 
-    // ── INDICATION TIER: drives SAE/SUSAR rates and PI fee default ──
-    // User-provided indication_tier overrides synopsis-derived detection
-    let indicationTier = A.indication_tier;
+    // ── INDICATION-DRIVEN SAE/SUSAR rates ─────────────────────────
+    // Auto-detected from indication string. User can override SAE/SUSAR
+    // values directly via the Monitoring tab in index.html.
     const ind = String(A.indication || '').toLowerCase();
-    if (!indicationTier) {
-      const isOnco   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
-      const isCardio = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
-      indicationTier = isOnco ? 'Oncology' : isCardio ? 'Cardiology' : 'Other';
-    }
-    A.indication_tier = indicationTier;
-    const tierIsOnco   = indicationTier === 'Oncology';
-    const tierIsCardio = indicationTier === 'Cardiology';
-    const saeRate   = tierIsOnco ? 0.30 : tierIsCardio ? 0.05 : 0.10;
-    const susarRate = tierIsOnco ? 0.10 : 0.05;
+    const isOnco   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
+    const isCardio = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
+    const saeRate   = isOnco ? 0.30 : isCardio ? 0.05 : 0.10;
+    const susarRate = isOnco ? 0.10 : 0.05;
 
     // PI fee: $4,000 oncology / $2,000 healthy vol & other (default if user unset)
     if (A.pi_fee === undefined || A.pi_fee === null || A.pi_fee === '') {
-      A.pi_fee = tierIsOnco ? 4000 : 2000;
+      A.pi_fee = isOnco ? 4000 : 2000;
     }
 
     // ── SERVER-SIDE DERIVED DEFAULTS (mirrors computeDerivedDefaults in index.html) ──
@@ -421,7 +415,6 @@ exports.handler = async function(event, context) {
       body: JSON.stringify({
         file: out.toString('base64'),
         deal_structure: A.deal_structure,
-        indication_tier: A.indication_tier,
         mgmtFee: ms.mgmtFee,
         premium: ms.premium,
         subtotalsSum: ms.mgmtFee - ms.premium,

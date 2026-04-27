@@ -1,9 +1,10 @@
 // vantage-v49-word
 // v49 changes:
-//  - Schema synced to index.html v49 (deal_structure, indication_tier, date_prepared,
-//    clin_contingency, vendor_mgmt_premium_rate, pi_fee, startup_sal_mult, closeout_sal_mult,
+//  - Schema synced to index.html v49 (deal_structure, date_prepared, clin_contingency,
+//    vendor_mgmt_premium_rate, pi_fee, startup_sal_mult, closeout_sal_mult,
 //    referral_pct, referral_name, tigermed_target_ms, tigermed_target_clinical)
 //  - Removed legacy tigermed_cost field, renamed ciprian_pct -> referral_pct
+//  - SAE/SUSAR rates and PI fee default auto-derived from indication string (no separate dropdown)
 //  - Brand-blue title bar with VANTAGE wordmark and study name
 //  - Century Gothic typography throughout
 //  - New sections: Deal Structure context, Operational Phasing, Sensitivity Scenarios,
@@ -34,14 +35,13 @@ exports.handler = async function(event, context) {
     if (A.startup_sal_mult === undefined || A.startup_sal_mult === null || A.startup_sal_mult === '') A.startup_sal_mult = 0.6;
     if (A.closeout_sal_mult === undefined || A.closeout_sal_mult === null || A.closeout_sal_mult === '') A.closeout_sal_mult = 1.0;
 
-    let tier = A.indication_tier;
-    if (!tier) {
-      const ind = String(A.indication || '').toLowerCase();
-      const isOnco   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(ind);
-      const isCardio = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(ind);
+    let tier;
+    {
+      const indStr = String(A.indication || '').toLowerCase();
+      const isOnco   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(indStr);
+      const isCardio = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(indStr);
       tier = isOnco ? 'Oncology' : isCardio ? 'Cardiology' : 'Other';
     }
-    A.indication_tier = tier;
     const tierIsOnco = tier === 'Oncology';
     if (A.pi_fee === undefined || A.pi_fee === null || A.pi_fee === '') A.pi_fee = tierIsOnco ? 4000 : 2000;
 
@@ -187,7 +187,6 @@ exports.handler = async function(event, context) {
       ['Trial Duration', `${totalMos} months`],
       ['Subjects Enrolled', String(nA('subj_enroll'))],
       ['Kazakhstan Sites', String(nA('kz_sites'))],
-      ['Indication Tier', tier],
     ]));
     body.push(para('Note: Figures above are server-side estimates for cross-reference. The Excel model is the source of truth for invoice-grade numbers — open it to see the precise Vantage Management Fee, Vendor Management Premium calculation, and full milestone-aligned cash flow.', {size:16, color:GRAY, spaceBefore:120, spaceAfter:200}));
 
@@ -198,7 +197,6 @@ exports.handler = async function(event, context) {
       ['Sponsor', sponsor],
       ['Phase', phase],
       ['Indication', indication],
-      ['Indication Tier', tier],
       ['Deal Structure', dealStructure],
     ]));
 
