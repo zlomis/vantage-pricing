@@ -45,6 +45,19 @@ exports.handler = async function(event, context) {
     const tierIsOnco = tier === 'Oncology';
     if (A.pi_fee === undefined || A.pi_fee === null || A.pi_fee === '') A.pi_fee = tierIsOnco ? 4000 : 2000;
 
+    // ── Sync derived values with generate-excel.js exactly ──
+    // generate-excel.js force-overrides these regardless of user input. We mirror that here
+    // so the Word log financials match the Excel file byte-for-byte.
+    {
+      const sites = Number(A.kz_sites) || 3;
+      const subj  = Number(A.subj_enroll) || 0;
+      const total = (Number(A.startup_mo)||0) + (Number(A.enroll_mo)||0) + (Number(A.treat_mo)||0) +
+                    (Number(A.followup_mo)||0) + (Number(A.closeout_mo)||0);
+      A.sites_screen = Math.round(sites * 1.5);
+      A.ec_annual    = Math.max(1, Math.ceil(total / 12));
+      A.subj_screen  = Math.round(subj * 1.3);
+    }
+
     function nA(k) { return Number(A[k]) || 0; }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function fmtUSD(v) { return '$' + Math.round(Number(v)||0).toLocaleString('en-US'); }
@@ -99,31 +112,70 @@ exports.handler = async function(event, context) {
       return tableXml(allRows, [3500, 5572]);
     }
 
-    // ── Financial computation (mirrors baseline IO logic) ──────────
-    function computeFinancials() {
-      // Approximate Vantage Management Fee — server-side mirror of MS sheet totals.
-      // Not used for invoice; this is a high-level estimate for the Word log.
-      const s   = nA('kz_sites') || 3;
-      const subj = nA('subj_enroll') || 100;
-      const pi_fee = nA('pi_fee') || 2000;
-
-      // High-level Vantage MS estimate (rough — Excel does the precise calc)
-      const baseMS = 250000 + 50000 * s; // rough Phase-1 anchor + per-site
-      const premium = isLocalCRO ? baseMS * (nA('vendor_mgmt_premium_rate') || 0.5) : 0;
-      const mgmtFee = baseMS + premium;
-
-      // Clinical estimate: ~$590 per patient screening + ~$600 per patient treatment
-      // (varies by phase) plus PI fee per site, then markup + contingency
-      const perPatient = 1200; // rough Phase 1 average
-      const clinBase = perPatient * subj + pi_fee * s;
-      const contingency = clinBase * (nA('clin_contingency') || 0.5);
-      const cro = clinBase + contingency;
-      const markup = nA('markup') || 2.0;
-      const clinRev = cro * markup;
-
-      const totRev = mgmtFee + clinRev;
-      return { mgmtFee, baseMS, premium, cro, clinRev, totRev };
+    // ── Financial computation: matches Excel exactly ─────────────────
+    // vantageCalcMS and vantageCalcCC are line-item replicas of the Management Services
+    // and Clinical Costs sheets in baseline_v2.xlsx. They MUST match the same functions
+    // in generate-excel.js byte-for-byte so the Word log shows the SAME numbers Excel
+    // will display after fullCalcOnLoad recalculation.
+    function vantageCalcMS_word(input){
+      const A=input||{};
+      const localCRO=(A.deal_structure||'Local CRO')==='Local CRO';
+      const num=k=>Number(A[k])||0;
+      const su=num('startup_mo'), en=num('enroll_mo'), tr=num('treat_mo'),
+            fo=num('followup_mo'), cl=num('closeout_mo');
+      const tot=su+en+tr+fo+cl;
+      const sut=su+en+tr;
+      const s=num('kz_sites')||3;
+      const subj=num('subj_enroll');
+      const s_f=(subj&&s)?Math.round(subj/s):0;
+      const s_s=num('sites_screen')||Math.round(s*1.5);
+      const ec=num('ec_init')||1;
+      const eca=num('ec_annual')||Math.max(1,Math.ceil(tot/12));
+      const i1=num('imv_1day'), i2=num('imv_2day'), rmv=num('rmv');
+      const sae=num('sae'), sus=num('susar'), sig=num('sig_issues');
+      const tcs=num('tc_sponsor'), tci=num('tc_internal'), sp=num('site_pay');
+      const sub_D13 =1100+3000+800*s+2500+5000+850+100+500+2000;
+      const sub_D41 =500*s_s+650*s_s+1500+250*s_f+2000*s+2500*s+250*s+500*s+1000*s+500+250*s+2500*s+1000*s+0+4000*ec+5000+5000+500*ec+2500*eca+5000+500+500+3500+3000+1000*s;
+      const sub_D49 =1500+3500+200*sut+3500+200*sut;
+      const sub_D66 =3250*s+1500*i1+1250*i2+750*rmv+500*en*s+250*sig+150*sig+500+500+300*sae+150*sus+250*sus+150*en*s+3000*s;
+      const sub_D79 =500*sut+250*sut+250*sut*2+7000+200*sp+250*sut*s+5000+500+3000+2500;
+      const sub_D92 =5000*2+1500+500+8500+1000+2000+400*tcs+250*tci+9000*s+400*Math.ceil(tot/2);
+      const sub_D98 =300+2500+250*s*3;
+      const sub_D103=1000+13000;
+      const subtotalsSum=sub_D13+sub_D41+sub_D49+sub_D66+sub_D79+sub_D92+sub_D98+sub_D103;
+      const premium=localCRO?subtotalsSum*(num('vendor_mgmt_premium_rate')):0;
+      return {subtotalsSum, premium, mgmtFee:subtotalsSum+premium};
     }
+    function vantageCalcCC_word(A){
+      const subj=Number(A.subj_enroll)||0;
+      const screen=Math.round(subj*1.3);
+      const sites=Number(A.kz_sites)||3;
+      const piFee=Number(A.pi_fee)||2000;
+      const conting=Number(A.clin_contingency)||0;
+      const markup=Number(A.markup)||2.0;
+      const e16=136*screen;            // PER_PATIENT_SCREENING (baseline default)
+      const e36=1234*subj;             // PER_PATIENT_TREATMENT (baseline default)
+      const e58=(e16+e36)*conting;
+      const e60=e16+e36+e58;
+      const e63=sites*piFee;
+      const e65=e60+e63;
+      const f65=e65*markup;
+      return {f65, f67:f65, clinRev:f65};
+    }
+    function computeFinancials() {
+      const ms = vantageCalcMS_word(A);
+      const cc = vantageCalcCC_word(A);
+      return {
+        mgmtFee: ms.mgmtFee,
+        premium: ms.premium,
+        baseMS:  ms.subtotalsSum,
+        cro:     cc.f65 / (Number(A.markup)||2.0),  // pre-markup clinical cost
+        clinRev: cc.f65,
+        totRev:  ms.mgmtFee + cc.f65,
+      };
+    }
+    // Helper: "1 month" / "2 months" pluralization
+    const moStr = (v) => `${v} month${Number(v) === 1 ? '' : 's'}`;
     const fin = computeFinancials();
 
     // ── Milestone schedule ─────────────────────────────────────────
@@ -184,7 +236,7 @@ exports.handler = async function(event, context) {
       ['Vantage Management Fee (estimate)', fmtUSD(fin.mgmtFee)],
       ['Clinical Trial Services Revenue', fmtUSD(fin.clinRev)],
       ['Total Proposal (estimate)', fmtUSD(fin.totRev)],
-      ['Trial Duration', `${totalMos} months`],
+      ['Trial Duration', moStr(totalMos)],
       ['Subjects Enrolled', String(nA('subj_enroll'))],
       ['Kazakhstan Sites', String(nA('kz_sites'))],
     ]));
@@ -205,12 +257,12 @@ exports.handler = async function(event, context) {
     const startMoNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     body.push(kvTable([
       ['Trial Start', `${startMoNames[(nA('start_mo')||1)-1]} ${nA('start_yr')||'—'}`],
-      ['Start-Up Phase', `${nA('startup_mo')} months`],
-      ['Enrollment', `${nA('enroll_mo')} months`],
-      ['Treatment', `${nA('treat_mo')} months`],
-      ['Follow-Up', `${nA('followup_mo')} months`],
-      ['Close-Out', `${nA('closeout_mo')} months`],
-      ['Total Duration', `${totalMos} months`],
+      ['Start-Up Phase', moStr(nA('startup_mo'))],
+      ['Enrollment', moStr(nA('enroll_mo'))],
+      ['Treatment', moStr(nA('treat_mo'))],
+      ['Follow-Up', moStr(nA('followup_mo'))],
+      ['Close-Out', moStr(nA('closeout_mo'))],
+      ['Total Duration', moStr(totalMos)],
     ]));
 
     // 7. Sites & Subjects
@@ -272,7 +324,7 @@ exports.handler = async function(event, context) {
 
     // 12. Operational Phasing (NEW)
     body.push(para('Operational Phasing', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
-    body.push(para(`Salaries are scaled by phase to reflect actual workload during ramp-up and wind-down. During the first ${nA('startup_mo')} months (Start-Up Phase), salaries are paid at ${(nA('startup_sal_mult')*100).toFixed(0)}% of full rate. During the final ${nA('closeout_mo')} month${nA('closeout_mo')===1?'':'s'} (Close-Out Phase), salaries are paid at ${(nA('closeout_sal_mult')*100).toFixed(0)}% of full rate. Active phases (Enrollment, Treatment, Follow-Up) run at 100%.`, {size:18, color:NAVY, spaceAfter:200}));
+    body.push(para(`Salaries are scaled by phase to reflect actual workload during ramp-up and wind-down. During the first ${moStr(nA('startup_mo'))} (Start-Up Phase), salaries are paid at ${(nA('startup_sal_mult')*100).toFixed(0)}% of full rate. During the final ${moStr(nA('closeout_mo'))} (Close-Out Phase), salaries are paid at ${(nA('closeout_sal_mult')*100).toFixed(0)}% of full rate. Active phases (Enrollment, Treatment, Follow-Up) run at 100%.`, {size:18, color:NAVY, spaceAfter:200}));
 
     // 13. OpEx
     body.push(para('Operating Expenses', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
