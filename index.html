@@ -1029,6 +1029,43 @@ async function handleFile(f){
     ['imv_1day','imv_2day','rmv','siv','cov','co_mon','tmf_qc',
      'sae','susar','sig_issues','tc_sponsor','tc_internal','site_pay','periodic_saf'].forEach(k=>{A[k]=null;});
     computeDerivedDefaults();
+
+    // ── v50: SoA manifest extraction (parallel, optional) ────────────
+    // Runs only for PDF inputs. Failure is non-fatal — if extraction fails or
+    // the synopsis lacks an SoA, we fall back to legacy mode (static $136/$1234
+    // healthy-vol defaults). Stored on window for generateModel() to pick up.
+    window.soaManifest = null;
+    if (ftype === 'pdf') {
+      try {
+        document.getElementById('spinFile').textContent='Extracting Schedule of Activities (line-item costs)…';
+        console.log('[Vantage] Calling SoA extraction…');
+        const soaResp = await fetch('/api/claude', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            mode: 'extractSoA',
+            pdf_base64: content,
+            assumptions: { study_name: A.study_name, indication: A.indication, phase: A.phase, population: A.population },
+          }),
+        });
+        if (soaResp.ok) {
+          const soaData = await soaResp.json();
+          const soaTxt = (soaData.content || []).map(b => b.text || '').join('');
+          const soaClean = soaTxt.replace(/```json|```/g, '').trim();
+          window.soaManifest = JSON.parse(soaClean);
+          console.log('[Vantage] SoA manifest:', window.soaManifest);
+          if (window.soaManifest && Array.isArray(window.soaManifest.procedures)) {
+            console.log('[Vantage] SoA procedures extracted:', window.soaManifest.procedures.length, 'archetype:', window.soaManifest.indication_archetype);
+          }
+        } else {
+          console.warn('[Vantage] SoA extraction returned non-OK status — falling back to legacy CC mode');
+        }
+      } catch (e) {
+        console.warn('[Vantage] SoA extraction failed (will use legacy CC mode):', e.message);
+        window.soaManifest = null;
+      }
+    }
+
     goTo('review');
 
   } catch(e){
@@ -1395,10 +1432,13 @@ async function generateModel(){
     }
 
     // ── 1. Excel ─────────────────────────────────────────
+    // v50 body shape: { assumptions: A, soa_manifest: M | null }
+    // When soaManifest is null (text inputs, SoA extraction failed, or v49-only flow),
+    // generate-excel falls back to legacy mode → byte-identical v49 output.
     const resp = await fetch('/.netlify/functions/generate-excel', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(A)
+      body: JSON.stringify({ assumptions: A, soa_manifest: window.soaManifest || null })
     });
     if(!resp.ok){
       const err = await resp.json().catch(()=>({}));
@@ -1424,7 +1464,7 @@ async function generateModel(){
       const wordResp = await fetch('/.netlify/functions/generate-word', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(A)
+        body: JSON.stringify({ assumptions: A, soa_manifest: window.soaManifest || null })
       });
       if(wordResp.ok){
         const wordData = await wordResp.json();

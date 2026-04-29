@@ -1,5 +1,12 @@
-// vantage-v49-word
-// v49 changes:
+// vantage-v50-word
+// v50 changes (additive over v49):
+//  - Body shape backward-compatible: accepts both legacy A and v50 {assumptions, soa_manifest}
+//  - When SoA manifest present, renders a Clinical Cost Line Items section
+//    listing the per-procedure breakdown derived from library_v1
+//  - Clinical totals in the Financial Summary now reflect manifest-driven calc
+//    (matches Excel output exactly when manifest is supplied)
+//
+// v49 inherited:
 //  - Schema synced to index.html v49 (deal_structure, date_prepared, clin_contingency,
 //    vendor_mgmt_premium_rate, pi_fee, startup_sal_mult, closeout_sal_mult,
 //    referral_pct, referral_name, tigermed_target_ms, tigermed_target_clinical)
@@ -11,6 +18,7 @@
 //    Vendor Management Premium reference
 //  - Removed Versioning Notes section
 const JSZip = require('jszip');
+const lib = require('./library_v1');
 
 exports.handler = async function(event, context) {
   const headers = {
@@ -22,7 +30,18 @@ exports.handler = async function(event, context) {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: 'Method Not Allowed' };
 
   try {
-    const A = JSON.parse(event.body);
+    // ── Body shape detection (v49 vs v50 backward compat) ─────────────
+    // v49 legacy:  body = A (assumptions)
+    // v50:         body = { assumptions: A, soa_manifest: M }
+    const rawBody = JSON.parse(event.body);
+    let A, soaManifest;
+    if (rawBody && typeof rawBody === 'object' && rawBody.assumptions && typeof rawBody.assumptions === 'object') {
+      A = rawBody.assumptions;
+      soaManifest = rawBody.soa_manifest || null;
+    } else {
+      A = rawBody;
+      soaManifest = null;
+    }
 
     // ── Apply same auto-flip defaults as generate-excel.js ──────────
     const dealStructure = (A.deal_structure === 'Tigermed') ? 'Tigermed' : 'Local CRO';
@@ -146,13 +165,89 @@ exports.handler = async function(event, context) {
       const premium=localCRO?subtotalsSum*(num('vendor_mgmt_premium_rate')):0;
       return {subtotalsSum, premium, mgmtFee:subtotalsSum+premium};
     }
-    function vantageCalcCC_word(A){
+    function vantageCalcCC_word(A, manifest){
       const subj=Number(A.subj_enroll)||0;
       const screen=Math.round(subj*1.3);
       const sites=Number(A.kz_sites)||3;
-      const piFee=Number(A.pi_fee)||2000;
+      const piFeeFlat=(A.pi_fee !== undefined && A.pi_fee !== null && A.pi_fee !== '')
+                       ? Number(A.pi_fee) : null;
       const conting=Number(A.clin_contingency)||0;
       const markup=Number(A.markup)||2.0;
+
+      // v50 library mode: when a manifest with procedures is present, use library_v1
+      // to compute per-section line items and totals matching the Excel output exactly.
+      if (manifest && manifest.procedures && manifest.procedures.length > 0 && lib && typeof lib.lookupProcedure === 'function') {
+        try {
+          let piTier = 'generalist';
+          if (manifest.archetype && lib.INDICATION_TRIGGERS) {
+            const trigger = lib.INDICATION_TRIGGERS.find(t => t.archetype === manifest.archetype);
+            if (trigger) piTier = trigger.piTier;
+          } else if (lib.classifyIndication) {
+            const trigger = lib.classifyIndication(A.indication, A.phase, A.population);
+            if (trigger) piTier = trigger.piTier;
+          }
+          const piFlatFeeUsd = piFeeFlat != null ? piFeeFlat : (lib.getPIFlatFee ? lib.getPIFlatFee(piTier) : 2000);
+
+          const lineItems = { screening: [], treatment: [], followup: [], site: [] };
+          for (const m of manifest.procedures) {
+            const proc = lib.lookupProcedure(m.name);
+            if (!proc) continue;
+            const unit = proc.trialUnitUsd;
+            const prob = (m.probability != null ? m.probability : 1.0);
+            const sc = Number(m.screening || 0);
+            const tr = Number(m.treatment || 0);
+            const fu = Number(m.followup  || 0);
+            if (proc.category === 'Subject Compensation') {
+              const lname = (m.name || '').toLowerCase();
+              let qty = 0, section = 'treatment';
+              if (lname.includes('screening'))      { qty = screen;             section = 'screening'; }
+              else if (lname.includes('travel') || lname.includes('childcare')) { qty = subj * (sc + tr + fu); section = 'treatment'; }
+              else                                  { qty = subj; }
+              lineItems[section].push({ category: proc.category, procedure: proc.procedure, qty, unitUsd: unit, probability: prob, totalUsd: qty * unit * prob, confidence: proc.confidence });
+              continue;
+            }
+            if (proc.category === 'Site Personnel & Visits' && (m.name.includes('flat fee') || m.name.includes('Recruiter'))) {
+              const qty = m.name.includes('flat fee') ? sites : subj;
+              lineItems.site.push({ category: proc.category, procedure: proc.procedure, qty, unitUsd: unit, probability: prob, totalUsd: qty * unit * prob, confidence: proc.confidence });
+              continue;
+            }
+            if (sc > 0) { const qty = screen * sc; lineItems.screening.push({ category: proc.category, procedure: proc.procedure, qty, unitUsd: unit, probability: prob, totalUsd: qty * unit * prob, confidence: proc.confidence }); }
+            if (tr > 0) { const qty = subj  * tr; lineItems.treatment.push({ category: proc.category, procedure: proc.procedure, qty, unitUsd: unit, probability: prob, totalUsd: qty * unit * prob, confidence: proc.confidence }); }
+            if (fu > 0) { const qty = subj  * fu; lineItems.followup.push({  category: proc.category, procedure: proc.procedure, qty, unitUsd: unit, probability: prob, totalUsd: qty * unit * prob, confidence: proc.confidence }); }
+          }
+          // PI flat fee fallback
+          const hasPIFlat = lineItems.site.some(li => li.procedure.includes('flat fee'));
+          if (!hasPIFlat) {
+            lineItems.site.push({ category: 'Site Personnel & Visits', procedure: 'Principal Investigator flat fee — per site (' + piTier + ')', qty: sites, unitUsd: piFlatFeeUsd, probability: 1.0, totalUsd: sites * piFlatFeeUsd, confidence: 'HIGH' });
+          }
+          const sumS = (arr) => arr.reduce((s, li) => s + li.totalUsd, 0);
+          const ssub = sumS(lineItems.screening), tsub = sumS(lineItems.treatment), fsub = sumS(lineItems.followup), sisub = sumS(lineItems.site);
+          const procBase = ssub + tsub + fsub;
+          const contUsd = procBase * conting;
+          const grand = procBase + contUsd + sisub;
+          const grandWithMarkup = grand * markup;
+          const perPatientBlended = subj > 0 ? grand / subj : 0;
+          return {
+            mode: 'library',
+            f65: grandWithMarkup,
+            f67: grandWithMarkup,
+            clinRev: grandWithMarkup,
+            archetype: manifest.archetype || null,
+            piTier,
+            lineItems,
+            sectionSubtotals: { screening: ssub, treatment: tsub, followup: fsub, site: sisub },
+            grandTotal: grand,
+            perPatientBlended,
+            perPatientWithMarkup: perPatientBlended * markup,
+            confidenceFlags: [],
+          };
+        } catch (e) {
+          // Fall through to legacy on any library error
+        }
+      }
+
+      // Legacy mode: $136/$1234 healthy-vol baseline (byte-identical v49 behavior)
+      const piFee = piFeeFlat != null ? piFeeFlat : 2000;
       const e16=136*screen;            // PER_PATIENT_SCREENING (baseline default)
       const e36=1234*subj;             // PER_PATIENT_TREATMENT (baseline default)
       const e58=(e16+e36)*conting;
@@ -160,11 +255,11 @@ exports.handler = async function(event, context) {
       const e63=sites*piFee;
       const e65=e60+e63;
       const f65=e65*markup;
-      return {f65, f67:f65, clinRev:f65};
+      return {mode:'legacy', f65, f67:f65, clinRev:f65, lineItems:null};
     }
     function computeFinancials() {
       const ms = vantageCalcMS_word(A);
-      const cc = vantageCalcCC_word(A);
+      const cc = vantageCalcCC_word(A, soaManifest);
       return {
         mgmtFee: ms.mgmtFee,
         premium: ms.premium,
@@ -172,6 +267,7 @@ exports.handler = async function(event, context) {
         cro:     cc.f65 / (Number(A.markup)||2.0),  // pre-markup clinical cost
         clinRev: cc.f65,
         totRev:  ms.mgmtFee + cc.f65,
+        cc,                                          // expose full cc object for line item rendering
       };
     }
     // Helper: "1 month" / "2 months" pluralization

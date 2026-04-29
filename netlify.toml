@@ -1,6 +1,9 @@
 [build]
   functions = "netlify/functions"
 
+[functions]
+  included_files = ["netlify/functions/*.md", "netlify/functions/*.json"]
+
 [[redirects]]
   from = "/api/claude"
   to = "/.netlify/functions/claude-proxy"
@@ -11,4 +14,6 @@
   to = "/.netlify/functions/generate-excel"
   status = 200
   force = true
+
 # nonce-153681
+# v50: included_files added so claude-proxy can read extractSoA_prompt.md and procedure_vocabulary.md at runtime
