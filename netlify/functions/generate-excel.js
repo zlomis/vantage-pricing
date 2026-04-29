@@ -1,4 +1,11 @@
-// vantage-v50.2-formula-reconciliation
+// vantage-v50.3-ui-preview-reconciliation
+// v50.3 (2026-04-29):
+//  - Added calcOnly fast-path: POST { assumptions, soa_manifest, calcOnly: true }
+//    runs MS+CC math and returns totals as JSON without generating xlsx.
+//    index.html uses this on the Review screen so banner numbers match the
+//    downloaded file (was: hardcoded $1175/pt healthy-vol approximation).
+//  - No behavior change for legacy/full generate calls.
+//
 // v50.2 hotfix (2026-04-29):
 //  - Fix E118/E120/F118/F120 formulas in baseline_v3 to NOT multiply by patient
 //    counts (the per-row qty values written by writeRow already include patient
@@ -446,6 +453,36 @@ exports.handler = async function(event, context) {
     // Library mode (manifest present) → V3 baseline with expanded rows.
     // Legacy mode (manifest=null)     → V2 baseline (byte-identical to v49).
     const ccPre = vantageCalcCC(A, soaManifest);
+
+    // ── v50.3: calcOnly fast-path ─────────────────────────────────────
+    // When the client sets { calcOnly: true } on the body, return MS+CC totals
+    // immediately without generating the xlsx. Used by the Review screen so the
+    // preview banner reflects the manifest-driven Clinical Revenue (matching
+    // what the downloaded file will show) instead of the legacy hardcoded calc.
+    // Per-row data is intentionally NOT included — that's only on full generate.
+    if (rawBody && rawBody.calcOnly === true) {
+      const msPre = vantageCalcMS(A);
+      return {
+        statusCode: 200,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          calcOnly: true,
+          deal_structure: A.deal_structure,
+          mgmtFee: msPre.mgmtFee,
+          premium: msPre.premium,
+          subtotalsSum: msPre.mgmtFee - msPre.premium,
+          clinRev: ccPre.f67,                           // grand total × markup
+          totRev: msPre.mgmtFee + ccPre.f67,
+          ccMode: ccPre.mode,                           // 'library' or 'legacy'
+          ccArchetype: ccPre.archetype || null,
+          ccProcedureCount: ccPre.lineItems
+            ? (ccPre.lineItems.screening.length + ccPre.lineItems.treatment.length
+              + ccPre.lineItems.followup.length + ccPre.lineItems.site.length)
+            : null,
+        }),
+      };
+    }
+
     const TEMPLATE_B64 = ccPre.mode === 'library' ? TEMPLATE_V3_B64 : TEMPLATE_V2_B64;
     const buf = Buffer.from(TEMPLATE_B64, 'base64');
     const zip = await JSZip.loadAsync(buf);

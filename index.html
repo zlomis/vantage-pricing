@@ -1035,6 +1035,7 @@ async function handleFile(f){
     // the synopsis lacks an SoA, we fall back to legacy mode (static $136/$1234
     // healthy-vol defaults). Stored on window for generateModel() to pick up.
     window.soaManifest = null;
+    window.libraryCC = null;  // v50.3: holds backend-computed Clinical Revenue when manifest is present
     if (ftype === 'pdf') {
       try {
         document.getElementById('spinFile').textContent='Extracting Schedule of Activities (line-item costs)…';
@@ -1057,12 +1058,34 @@ async function handleFile(f){
           if (window.soaManifest && Array.isArray(window.soaManifest.procedures)) {
             console.log('[Vantage] SoA procedures extracted:', window.soaManifest.procedures.length, 'archetype:', window.soaManifest.indication_archetype);
           }
+
+          // ── v50.3: ask backend to compute manifest-driven Clinical Revenue
+          // for the Review banner. Fast (~200ms), runs same code as full generate.
+          // Failure is non-fatal — banner falls back to legacy approximation.
+          try {
+            document.getElementById('spinFile').textContent='Computing Clinical Revenue…';
+            const calcResp = await fetch('/.netlify/functions/generate-excel', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ assumptions: A, soa_manifest: window.soaManifest, calcOnly: true })
+            });
+            if (calcResp.ok) {
+              window.libraryCC = await calcResp.json();
+              console.log('[Vantage] Library CC preview:', window.libraryCC);
+            } else {
+              console.warn('[Vantage] calcOnly preview returned non-OK status — banner will use legacy approximation');
+            }
+          } catch (calcErr) {
+            console.warn('[Vantage] calcOnly preview failed (non-fatal):', calcErr.message);
+            window.libraryCC = null;
+          }
         } else {
           console.warn('[Vantage] SoA extraction returned non-OK status — falling back to legacy CC mode');
         }
       } catch (e) {
         console.warn('[Vantage] SoA extraction failed (will use legacy CC mode):', e.message);
         window.soaManifest = null;
+        window.libraryCC = null;
       }
     }
 
@@ -1305,23 +1328,32 @@ function calcMgmtFee(){
   return vantageCalcMS(A).mgmtFee;
 }
 
-function calcEstimate(mgmtFeeOverride){
+function calcEstimate(mgmtFeeOverride, clinRevOverride){
   const grand=mgmtFeeOverride!=null?mgmtFeeOverride:calcMgmtFee();
 
-  // Clinical revenue mirrors baseline Clinical Costs tab:
-  //   procedures = (per-patient × subj_enroll) + contingency-buffered
-  //   PI fee     = pi_fee × kz_sites
-  //   total      = (procedures + PI) × markup
-  // Per-patient cost in baseline (Plenty healthy-vol Phase 1) is a fixed schedule;
-  // we use an approximation here. The Excel model is the source of truth for the precise figure.
-  const PER_PATIENT_BASE=1175;  // approx. healthy-vol Phase 1 procedures per patient
-  const subj=n('subj_enroll');
-  const s=n('kz_sites');
-  const procBase=PER_PATIENT_BASE*subj;
-  const proc=procBase*(1+n('clin_contingency'));
-  const piFee=n('pi_fee')*s;
-  const cro=proc+piFee;
-  const clinRev=cro*n('markup');
+  let clinRev, cro;
+  if (clinRevOverride != null) {
+    // v50.3: explicit override (post-Generate path uses server's exact figure)
+    clinRev = clinRevOverride;
+    cro = clinRev / (n('markup') || 1);  // back-derive pre-markup for EBITDA calc
+  } else if (window.libraryCC && window.libraryCC.clinRev != null) {
+    // v50.3: manifest-driven preview from backend calcOnly endpoint.
+    // This is the same number the downloaded xlsx will show — no drift.
+    clinRev = window.libraryCC.clinRev;
+    cro = clinRev / (n('markup') || 1);
+  } else {
+    // Legacy approximation — used for text-file inputs or when SoA extraction
+    // failed. Hardcoded $1175/pt healthy-vol Phase 1 default; downloaded xlsx
+    // may differ if the actual baseline applies different per-patient cost.
+    const PER_PATIENT_BASE=1175;
+    const subj=n('subj_enroll');
+    const s=n('kz_sites');
+    const procBase=PER_PATIENT_BASE*subj;
+    const proc=procBase*(1+n('clin_contingency'));
+    const piFee=n('pi_fee')*s;
+    cro=proc+piFee;
+    clinRev=cro*n('markup');
+  }
   const totRev=grand+clinRev;
 
   // Operating costs — match baseline IO B15 logic (KZ ops × (enroll+1) + tech × tot + insurance × tot + travel + legal + audit ceiling)
@@ -1486,9 +1518,10 @@ async function generateModel(){
       console.warn('Word log fetch error (non-fatal):', wordErr);
     }
 
-    // Done screen
+    // Done screen — use server's exact figures (which match the downloaded xlsx)
     const serverMgmt = data.mgmtFee || null;
-    const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate(serverMgmt);
+    const serverClin = data.clinRev != null ? data.clinRev : null;
+    const {grand:g,clinRev:c,totRev:t,ebitda:e}=calcEstimate(serverMgmt, serverClin);
     ['dMgmt','dClin','dTotal','dEbitda'].forEach((id,i)=>{document.getElementById(id).textContent=fmt([g,c,t,e][i]);});
     goTo('done');
   } catch(err){
