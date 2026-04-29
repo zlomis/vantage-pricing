@@ -1,4 +1,11 @@
-// vantage-v50-clinical-cost-library
+// vantage-v50.1-clinical-cost-library-xmlfix
+// v50.1 hotfix (2026-04-29): writeRow B/C/D-col regexes were producing
+// duplicate t="..." attributes, corrupting sheet7.xml. Excel's auto-repair
+// stripped the broken cells, leaving an apparently-empty Clinical Costs tab.
+// Fix: rewrite cell tag entirely on each B/C/D write, stripping any pre-existing
+// t="..." before adding the new one. Also handle self-closing B-col cells
+// (<c r="B5" s="142"/>) which the original regex didn't match.
+//
 // v50 changes (additive over v49):
 //  - 298-procedure Clinical Cost Library v1 (library_v1.js + library_v1_data.json)
 //    drives library-mode CC calculation when an SoA manifest is present
@@ -590,49 +597,67 @@ exports.handler = async function(event, context) {
 
       // Helper: write inline-string label into B-col, qty into C-col, unit USD into D-col.
       // E and F columns hold formulas (E = C*D, F = E*markup) — preserved; we patch their cached <v>.
+      // Baseline_v3 sheet7 cell shapes:
+      //   B-col: <c r="B5" s="142"/>                            (self-closing, no content)
+      //   C-col: <c r="C5" s="151" t="n"><v>0</v></c>            (numeric, no formula)
+      //   D-col: <c r="D5" s="152" t="n"><v>0</v></c>            (numeric, no formula)
+      //   E-col: <c r="E5" s="152" t="n"><f aca="false">C5*D5</f><v>0</v></c>
+      //   F-col: <c r="F5" s="152" t="n"><f aca="false">E5*Assumptions!B53</f><v>0</v></c>
       function writeRow(rowIdx, name, qty, unitUsd) {
         const total = qty * unitUsd;
         const totalMk = total * markup;
-        // B: inline string label (preserve style attrs)
-        xml7 = xml7.replace(
-          new RegExp('<c r="B' + rowIdx + '"([^>]*)(?:\\s*t="inlineStr")?([^>]*)>(?:<is><t[^>]*>[^<]*</t></is>|<v>[^<]*</v>)?</c>'),
-          (m, pre, post) => {
-            // Strip any existing t="..." attribute, then add t="inlineStr"
-            const cleaned = (pre + post).replace(/\s*t="[^"]*"/g, '');
-            return '<c r="B' + rowIdx + '"' + cleaned + ' t="inlineStr"><is><t xml:space="preserve">' + esc(name) + '</t></is></c>';
+
+        // ── B: replace entire cell tag with inline-string version ──
+        // Match the cell in either self-closing or paired form, capture only the attributes,
+        // strip any existing t="..." cleanly, then add t="inlineStr" exactly once.
+        const bRe = new RegExp('<c r="B' + rowIdx + '"([^/>]*?)(?:/>|>(?:[^<]|<(?!/c>))*?</c>)', 's');
+        xml7 = xml7.replace(bRe, (m, attrs) => {
+          const cleaned = String(attrs).replace(/\s*t="[^"]*"/g, '').trimEnd();
+          if (name === '') {
+            // Empty name → leave cell empty (self-closing) so Excel doesn't render an empty <is>
+            return '<c r="B' + rowIdx + '"' + (cleaned ? ' ' + cleaned.trim() : '') + '/>';
           }
-        );
-        // C: qty (numeric)
-        xml7 = xml7.replace(
-          new RegExp('<c r="C' + rowIdx + '"([^>]*)>(?:<f[^>]*>[^<]*</f>)?<v>[^<]*</v></c>'),
-          '<c r="C' + rowIdx + '"$1><v>' + qty + '</v></c>'
-        );
-        // D: unit USD (numeric)
-        xml7 = xml7.replace(
-          new RegExp('<c r="D' + rowIdx + '"([^>]*)>(?:<f[^>]*>[^<]*</f>)?<v>[^<]*</v></c>'),
-          '<c r="D' + rowIdx + '"$1><v>' + unitUsd + '</v></c>'
-        );
-        // E: total = C*D — keep formula, patch cached value
+          return '<c r="B' + rowIdx + '"' + (cleaned ? ' ' + cleaned.trim() : '') + ' t="inlineStr"><is><t xml:space="preserve">' + esc(name) + '</t></is></c>';
+        });
+
+        // ── C: numeric value — strip any existing t="...", set t="n" ──
+        // Replace the entire cell to guarantee no attribute duplication.
+        const cRe = new RegExp('<c r="C' + rowIdx + '"([^/>]*?)(?:/>|>(?:[^<]|<(?!/c>))*?</c>)', 's');
+        xml7 = xml7.replace(cRe, (m, attrs) => {
+          const cleaned = String(attrs).replace(/\s*t="[^"]*"/g, '').trimEnd();
+          return '<c r="C' + rowIdx + '"' + (cleaned ? ' ' + cleaned.trim() : '') + ' t="n"><v>' + qty + '</v></c>';
+        });
+
+        // ── D: numeric value ──
+        const dRe = new RegExp('<c r="D' + rowIdx + '"([^/>]*?)(?:/>|>(?:[^<]|<(?!/c>))*?</c>)', 's');
+        xml7 = xml7.replace(dRe, (m, attrs) => {
+          const cleaned = String(attrs).replace(/\s*t="[^"]*"/g, '').trimEnd();
+          return '<c r="D' + rowIdx + '"' + (cleaned ? ' ' + cleaned.trim() : '') + ' t="n"><v>' + unitUsd + '</v></c>';
+        });
+
+        // ── E: keep formula (C*D), patch cached <v> ──
         xml7 = xml7.replace(
           new RegExp('(<c r="E' + rowIdx + '"[^>]*>(?:<f[^>]*/>|<f[^>]*>[^<]*</f>)?)<v>[^<]*</v>'),
           '$1<v>' + total + '</v>'
         );
-        // F: total*markup — keep formula, patch cached value
+
+        // ── F: keep formula (E*Assumptions!B53), patch cached <v> ──
         xml7 = xml7.replace(
           new RegExp('(<c r="F' + rowIdx + '"[^>]*>(?:<f[^>]*/>|<f[^>]*>[^<]*</f>)?)<v>[^<]*</v>'),
           '$1<v>' + totalMk + '</v>'
         );
       }
 
-      // Helper: hide unused rows by setting hidden="1" on the <row> element
+      // Helper: hide unused rows by setting hidden="1" on the <row> element.
+      // Baseline rows have hidden="false" already — we MUST replace it, not append,
+      // otherwise the row tag ends up with duplicate hidden attributes (XML invalid).
       function hideRow(rowIdx) {
-        xml7 = xml7.replace(
-          new RegExp('(<row r="' + rowIdx + '"[^/]*?)( customHeight="1")?(/?>)'),
-          (m, pre, custH, close) => {
-            if (/hidden="1"/.test(pre)) return m;
-            return pre + (custH || '') + ' hidden="1"' + close;
-          }
-        );
+        const rowRe = new RegExp('<row r="' + rowIdx + '"([^>]*)>');
+        xml7 = xml7.replace(rowRe, (m, attrs) => {
+          // Strip any existing hidden="..." cleanly, then add hidden="1"
+          const cleaned = String(attrs).replace(/\s*hidden="[^"]*"/g, '');
+          return '<row r="' + rowIdx + '"' + cleaned + ' hidden="1">';
+        });
       }
 
       // Pad arrays to fixed slot count, hide unused rows.
