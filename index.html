@@ -1,5 +1,5 @@
 <!-- vantage-v49-encapsulated -->
-<!-- Vantage Pricing Engine v50.4-design-polish - 2026-04-29 -->
+<!-- Vantage Pricing Engine v50.5-calibration-fixes - 2026-04-29 -->
 <!-- v49 changes:
      - Deal Structure (Tigermed / Local CRO) as top-level choice
      - Date Prepared field replaces volatile =TODAY()
@@ -1167,9 +1167,23 @@ async function extractFromSynopsis(fileContent,fileType){
     '  CRITICAL: Return null unless the synopsis explicitly states an enrollment period (e.g. "X-month enrollment period").',
     '  Do NOT infer from dosing schedules, cohort sizes, or treatment cycles.',
     '- treat_mo: treatment phase duration in months. Return null if not explicitly stated.',
-    '  NOTE: per-patient treatment duration (e.g. "6 cycles of treatment") is NOT the same as total treatment phase duration.',
+    '  CRITICAL: This is the per-patient treatment phase from first dose to end of treatment.',
+    '  - "Up to 12 cycles of 14 days" = 12 × 14 days = ~6 months → treat_mo: 6',
+    '  - "Treatment for 6 months" or "until disease progression with min 6 months" → treat_mo: 6',
+    '  - When the protocol says "X months of treatment" use that number.',
+    '  - When the protocol gives cycles, multiply: cycles × cycle_length_in_months.',
+    '  - Do NOT confuse treatment with follow-up. If the synopsis says "6 months treatment, 6 months follow-up", treat_mo: 6 and followup_mo: 6 (NOT treat_mo: 1 and followup_mo: 12).',
     '- followup_mo: follow-up period in months. Return null if not explicitly stated.',
+    '  CRITICAL: This is the post-treatment observation period only. Do NOT include treatment duration here.',
+    '  - "6 months follow-up after end of treatment" → followup_mo: 6',
+    '  - If only total trial duration is given without separating follow-up from treatment, return null.',
     '- closeout_mo: close-out duration in months. Return null if not explicitly stated.',
+    '  TYPICAL: Most sponsors don\'t specify; default to 1-2 months for data lock + analysis.',
+    '',
+    'TIMELINE SANITY CHECK:',
+    '- treat_mo + followup_mo should equal the per-patient post-screening duration.',
+    '- If you find yourself computing treat_mo=1 and followup_mo=12 (or similar lopsided splits), re-read the synopsis. Most trials have treat_mo > followup_mo or roughly equal.',
+    '- When in doubt, return null and let defaults apply.',
     '',
     'SITES & SUBJECTS:',
     '- kz_sites: Kazakhstan sites Vantage will manage. Sponsors specify patient counts not sites — almost never stated in a synopsis.',

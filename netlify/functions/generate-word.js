@@ -1,3 +1,10 @@
+// vantage-v50.5-calibration-fixes
+// v50.5 (2026-04-29):
+//  - Replicated server-side derivation block from generate-excel.js so
+//    A.imv_1day, A.sae, etc. are recomputed from current sites/subj before vantageCalcMS_word.
+//    Fixes Word log Mgmt Fee disagreeing with Excel ($741,750 vs $528,950 on OT01P201 Tigermed run).
+//  - Milestone schedule now applies % to Mgmt Fee (was Total Proposal) — matches Excel MS sheet.
+//
 // vantage-v50-word
 // v50 changes (additive over v49):
 //  - Body shape backward-compatible: accepts both legacy A and v50 {assumptions, soa_manifest}
@@ -67,12 +74,68 @@ exports.handler = async function(event, context) {
     // ── Sync derived values with generate-excel.js exactly ──
     // generate-excel.js force-overrides these regardless of user input. We mirror that here
     // so the Word log financials match the Excel file byte-for-byte.
+    //
+    // CRITICAL: this block must stay byte-identical to the (function computeDerived)
+    // block in generate-excel.js (~line 412). The two endpoints receive the same A from
+    // the client, but generate-excel.js used to recompute imv_1day/sae/etc. while
+    // generate-word.js used the stale client-derived values — causing Word to show
+    // a different Mgmt Fee (e.g., $741,750 vs Excel's $528,950 on OT01P201 with subj=18 override).
     {
-      const sites = Number(A.kz_sites) || 3;
-      const subj  = Number(A.subj_enroll) || 0;
-      const total = (Number(A.startup_mo)||0) + (Number(A.enroll_mo)||0) + (Number(A.treat_mo)||0) +
-                    (Number(A.followup_mo)||0) + (Number(A.closeout_mo)||0);
+      // Server-side derived defaults (derive sites if missing — matches generate-excel.js)
+      if (!A.kz_sites) {
+        const is2bSites = /2b|phase\s*iib/i.test(A.phase || '');
+        const is3Sites  = /phase\s*3|phase\s*iii/i.test(A.phase || '') && !is2bSites;
+        const is2Sites  = /phase\s*2|phase\s*ii(?!i)/i.test(A.phase || '') || is2bSites;
+        A.kz_sites = is3Sites ? 10 : is2Sites ? 5 : 3;
+      }
+      const sites    = Number(A.kz_sites);
+      const enroll   = Number(A.enroll_mo)   || 6;
+      const treat    = Number(A.treat_mo)    || 1;
+      const followup = Number(A.followup_mo) || 2;
+      const closeout = Number(A.closeout_mo) || 1;
+      const startup  = Number(A.startup_mo)  || 4;
+      const total    = startup + enroll + treat + followup + closeout;
+      const subj     = Number(A.subj_enroll) || 100;
+
+      const indStrW = String(A.indication || '').toLowerCase();
+      const isOncoW   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(indStrW);
+      const isCardioW = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(indStrW);
+      const saeRateW   = isOncoW ? 0.30 : isCardioW ? 0.05 : 0.10;
+      const susarRateW = isOncoW ? 0.10 : 0.05;
+
+      const is2bD = /2b|phase\s*iib/i.test(A.phase || '');
+      const is3D  = /phase\s*3|phase\s*iii/i.test(A.phase || '') && !is2bD;
+      const is2D  = /phase\s*2|phase\s*ii(?!i)/i.test(A.phase || '') || is2bD;
+
+      if (is3D) {
+        A.imv_1day = Math.round(sites * enroll * 0.5 + sites * followup / 6);
+        A.imv_2day = 0;
+        A.rmv      = Math.round(sites * enroll * 0.5 + sites * followup / 6);
+      } else if (is2D) {
+        A.imv_1day = Math.round((treat * 2 + enroll + followup) * sites);
+        A.imv_2day = Math.ceil(treat / 2) * sites;
+        A.rmv      = Math.round(sites * (enroll + treat + followup) * 0.5);
+      } else {
+        A.imv_1day = Math.round(sites * (enroll + followup) + sites * treat * 0.5);
+        A.imv_2day = 0;
+        A.rmv      = Math.round(sites * (enroll + followup) + sites * treat * 0.5);
+      }
+      A.siv    = sites;
+      A.cov    = sites;
+      A.co_mon = sites;
+      A.tmf_qc = Math.max(1, Math.round(total / 6));
+
+      A.sae        = Math.round(subj * saeRateW * 3);
+      A.susar      = Math.ceil(subj * susarRateW);
+      A.sig_issues = Math.max(3, Math.round(sites * 0.5));
+
+      A.tc_sponsor   = total * 2;
+      A.tc_internal  = Math.round(A.tc_sponsor * 2);
+      A.site_pay     = sites * Math.ceil(total / 3);
+      A.periodic_saf = Math.max(1, Math.ceil(total / 12));
+
       A.sites_screen = Math.round(sites * 1.5);
+      A.ctra         = sites;
       A.ec_annual    = Math.max(1, Math.ceil(total / 12));
       A.subj_screen  = Math.round(subj * 1.3);
     }
@@ -439,10 +502,15 @@ exports.handler = async function(event, context) {
 
     // 14. Milestone Payment Schedule
     body.push(para('Milestone Payment Schedule', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
-    const totalProposal = fin.totRev;
+    // v50.5: milestone % apply to Vantage Management Fee, NOT to Total Proposal.
+    // (Excel MS sheet has always done this; Word was incorrectly using Total.)
+    // The 100% milestones below sum to 100% of the Mgmt Fee, which is what gets paid out
+    // to Vantage on its own schedule. Clinical Services Revenue follows a separate
+    // schedule (10% upfront + 90% spread) handled in the Excel P&L tab.
+    const milestoneBase = fin.mgmtFee;
     const msHeader = trXml([
       tcXml('Milestone',    {bold:true, color:'FFFFFF', bg:BLUE, w:2400}),
-      tcXml('% of Total',   {bold:true, color:'FFFFFF', bg:BLUE, w:1200}),
+      tcXml('% of Mgmt Fee',{bold:true, color:'FFFFFF', bg:BLUE, w:1200}),
       tcXml('Amount (USD)', {bold:true, color:'FFFFFF', bg:BLUE, w:1800}),
       tcXml('Timing',       {bold:true, color:'FFFFFF', bg:BLUE, w:3672}),
     ]);
@@ -451,7 +519,7 @@ exports.handler = async function(event, context) {
       return trXml([
         tcXml(m.lbl, {color:NAVY, bg, w:2400}),
         tcXml(m.pct + '%', {color:GRAY, bg, w:1200}),
-        tcXml(fmtUSD(totalProposal * m.pct/100), {color:NAVY, bg, w:1800}),
+        tcXml(fmtUSD(milestoneBase * m.pct/100), {color:NAVY, bg, w:1800}),
         tcXml(m.mo, {color:GRAY, bg, w:3672}),
       ]);
     });

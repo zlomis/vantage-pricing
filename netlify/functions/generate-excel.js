@@ -1,4 +1,43 @@
-// vantage-v50.3-ui-preview-reconciliation
+// vantage-v50.5-calibration-fixes
+// v50.5 (2026-04-29): OT01P201 calibration debug pass.
+//
+//  Fixes:
+//   1. ARCHETYPE CLASSIFIER (dominant): Library was returning healthy_volunteer_phase1
+//      for an oncology Phase 2b/3 pancreatic trial. Caused per-pt = $3,012 vs manual $35,226.
+//      Root cause: SoA prompt only had a healthy-vol worked example, so Sonnet 4 anchored on it
+//      even when the protocol described mFOLFIRINOX + RECIST + tumor biopsy.
+//      Fix: (a) added oncology worked example to extractSoA_prompt.md;
+//           (b) added hard cancer veto in prompt rule #4 (forbids healthy_volunteer_phase1 if
+//               indication contains cancer/tumor/oncology terms);
+//           (c) added cancer/tumor/etc. fallback keywords + isCancer veto in classifyIndication;
+//           (d) server-side veto here in vantageCalcCC: re-classify if SoA returns healthy-vol
+//               for a cancer indication.
+//
+//   2. WORD ≠ EXCEL MGMT FEE (structural): Word log showed $741,750, Excel showed $528,950.
+//      Root cause: generate-excel.js had a server-side derivation block that overwrote
+//      A.imv_1day, A.sae, etc. based on current sites/subj. generate-word.js did not, so it
+//      used stale client-side values from before the user override.
+//      Fix: replicated the same derivation block in generate-word.js (lines ~67-145).
+//      Also fixed Word milestone schedule to compute % on Mgmt Fee (matches Excel + manual model)
+//      instead of Total Proposal.
+//
+//   3. COVER + VANTAGE OUTPUT IDENTITY (cached values): Cover B8-B12 and VO C4-C7 are
+//      formulas referencing Assumptions B5-B8/B11-B12. fullCalcOnLoad="1" recalcs them in
+//      Excel desktop, but web/mobile previewers show cached "[Study Name]" placeholders.
+//      Fix: added patchCachedStrIn() helper that updates cached <v> while preserving <f>...</f>
+//      formula. Patches Cover B8-B12 + VO C4-C7 + VO C25 (patient count display).
+//
+//   4. ASSUMPTIONS FORMULA CELLS (cached values): B18 (Total Duration), B22 (sites
+//      feasibility cached at 33 from default 100/3), B24, B51 (Mgmt Fee cached at $522,187
+//      from baseline default), B52, B54, B67 — all formulas pointing at cells we override.
+//      Fix: patchCachedIn() patches all of them after setNum overrides.
+//
+//   5. TIMELINE EXTRACTION PROMPT: synopsis prompt now disambiguates Treatment vs Follow-Up
+//      (was extracting treat_mo=1, followup_mo=12 for OT01P201 instead of 6+6).
+//
+//   Version bumped from v50.3 to v50.5. v50.4 was design-polish only (UI changes in
+//   index.html), no backend logic changed.
+//
 // v50.3 (2026-04-29):
 //  - Added calcOnly fast-path: POST { assumptions, soa_manifest, calcOnly: true }
 //    runs MS+CC math and returns totals as JSON without generating xlsx.
@@ -151,6 +190,17 @@ function vantageCalcCC(A, manifest) {
   }
 
   // ─── LIBRARY-DRIVEN MODE ───────────────────────────────────────────────
+  // Hard cancer veto: if the indication is oncology, force-correct an
+  // archetype that the SoA extractor mis-classified as healthy_volunteer_phase1.
+  // (Defensive — also enforced in classifyIndication and prompt-side rule #4.)
+  const indStr = String(A.indication || '');
+  const isCancer = /\b(cancer|tumor|tumour|carcinoma|malignant|malignanc|oncology|oncologic|leukemia|leukaemia|lymphoma|myeloma|sarcoma|glioma|melanoma|metastatic|adenocarcinoma|nsclc|sclc|hcc)\b/i.test(indStr);
+  if (isCancer && manifest.archetype === 'healthy_volunteer_phase1') {
+    console.warn('[vantageCalcCC] Cancer veto: SoA returned healthy_volunteer_phase1 for indication "' + indStr + '" — re-classifying.');
+    const corrected = lib.classifyIndication(indStr, A.phase, A.population);
+    manifest.archetype = corrected ? corrected.archetype : 'oncology_chemo_combo';
+  }
+
   // Determine PI tier (used for PI flat-fee per site default)
   let piTier = 'generalist';
   if (manifest.archetype) {
@@ -523,6 +573,31 @@ exports.handler = async function(event, context) {
     }
     function setNum(ref, val) { xml2 = setNumIn(xml2, ref, val); }
 
+    // v50.5: patchCached updates ONLY the cached <v> value while PRESERVING the formula.
+    // This is critical for formula cells whose inputs we override via setNum (e.g.,
+    // B18 = SUM(B13:B17) — if B13-B17 are setNum'd to new values but B18's cached
+    // value isn't refreshed, web/mobile previewers that don't honor fullCalcOnLoad
+    // show the stale baseline value (B18=14 instead of 44 for OT01P201).
+    function patchCachedIn(xmlRef, ref, val) {
+      if (val === undefined || val === null || val === '') return xmlRef;
+      const n = Number(val);
+      if (isNaN(n)) return xmlRef;
+      // Match cell with formula intact, replace only the <v> content
+      return xmlRef.replace(
+        new RegExp('(<c r="' + ref + '"[^>]*>(?:<f[^>]*/>|<f[^>]*>[^<]*</f>))<v>[^<]*</v>'),
+        '$1<v>' + n + '</v>'
+      );
+    }
+    // patchCachedStrIn: same as patchCachedIn but for string cells (t="str") — treats val as a literal string
+    function patchCachedStrIn(xmlRef, ref, val) {
+      if (val === undefined || val === null || val === '') return xmlRef;
+      const safeVal = String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return xmlRef.replace(
+        new RegExp('(<c r="' + ref + '"[^>]*>(?:<f[^>]*/>|<f[^>]*>[^<]*</f>))<v>[^<]*</v>'),
+        '$1<v>' + safeVal + '</v>'
+      );
+    }
+
     // ── Assumptions cell writes ──────────────────────────────────────
     // Study Identity (shared strings) — Cover B8-B12 are formulas referencing these
     xml2 = setSharedStr(xml2, 'B5', A.study_name);
@@ -580,9 +655,37 @@ exports.handler = async function(event, context) {
     setNum('B102', A.tigermed_target_clinical);
     setNum('B103', A.vendor_mgmt_premium_rate);
 
-    zip.file('xl/worksheets/sheet2.xml', xml2);
-    // NOTE: sharedStrings.xml is saved at the very end so all setSharedStr modifications
-    // across all sheets (Cover B14, Assumptions B5-B9, etc.) are captured
+    // ── v50.5: Cached-value patches for Assumptions formula cells ─────
+    // These cells have formulas that depend on values we just setNum'd.
+    // fullCalcOnLoad="1" recomputes them in real Excel, but cached-only viewers
+    // (web preview, Google Sheets, Numbers) show stale defaults until we patch them.
+    // Recompute the formulas server-side so cached values match what fullCalcOnLoad would produce.
+    {
+      const _su = Number(A.startup_mo)||0, _en = Number(A.enroll_mo)||0,
+            _tr = Number(A.treat_mo)||0, _fo = Number(A.followup_mo)||0,
+            _cl = Number(A.closeout_mo)||0;
+      const _tot = _su + _en + _tr + _fo + _cl;
+      const _sites = Number(A.kz_sites)||0;
+      const _subj  = Number(A.subj_enroll)||0;
+
+      // Timeline / sites / subjects formula cells
+      xml2 = patchCachedIn(xml2, 'B18', _tot);                                    // Total Duration = SUM(B13:B17)
+      xml2 = patchCachedIn(xml2, 'B22', _sites > 0 ? Math.round(_subj/_sites) : 0); // Patients per site
+      xml2 = patchCachedIn(xml2, 'B24', Math.round(_subj * 1.3));                 // Subjects Screened
+
+      // Salary total
+      const _salTot = (Number(A.sal_charlie)||0)+(Number(A.sal_zach)||0)+(Number(A.sal_almas)||0)+
+                      (Number(A.sal_didar)||0)+(Number(A.sal_alex)||0)+(Number(A.sal_alexander)||0)+
+                      (Number(A.sal_shynar)||0);
+      xml2 = patchCachedIn(xml2, 'B67', _salTot);
+
+      // Monitoring/PM formula cells (B33, B35-B39, B40-B42, B45-B48): these were
+      // setNum'd above (which strips the formula), so cached values are correct.
+      // No further patch needed.
+    }
+
+    // NOTE: sheet2.xml save deferred to after `ms` and `cc` are computed below,
+    // so we can patch B51/B52/B54 cached values that depend on MS!D107 and CC!E122.
 
     // ── Sheet 6: Management Services — patch cached subtotals ──────
     // fullCalcOnLoad="1" makes Excel recalc on open, but viewers like Google Sheets
@@ -590,6 +693,19 @@ exports.handler = async function(event, context) {
     // everywhere. Math is in vantageCalcMS() — must mirror MS sheet exactly.
     const ms = vantageCalcMS(A);
     const cc = ccPre;
+
+    // ── v50.5: now that ms and cc are available, patch Assumptions B51/B52/B54 ─────
+    // B51 = MS!D107 (Vantage Mgmt Fee), B52 = CC!E122 (Clinical Costs at cost),
+    // B54 = B52*B53 (Clinical Services Revenue). Cached values were stale baseline defaults.
+    xml2 = patchCachedIn(xml2, 'B51', ms.mgmtFee);
+    // For library mode, e65 is the procedures-at-cost total (same role as legacy);
+    // for legacy mode, cc.e65 is also the procedures-at-cost total.
+    xml2 = patchCachedIn(xml2, 'B52', cc.e65);
+    xml2 = patchCachedIn(xml2, 'B54', cc.f65);
+
+    // Now save sheet2.xml — all patches applied
+    zip.file('xl/worksheets/sheet2.xml', xml2);
+
     {
       let xml6 = await zip.files['xl/worksheets/sheet6.xml'].async('string');
       // Patch the section subtotal cached values (D13, D41, etc.) — they're SUM formulas
@@ -816,20 +932,44 @@ exports.handler = async function(event, context) {
       zip.file('xl/worksheets/sheet5.xml', xml5);
     }
 
-    // ── Sheet 1: Cover — Date Prepared (B14 shared string) ───────────
+    // ── Sheet 1: Cover — Date Prepared (B14 shared string) + cached identity ──────
     {
       let xml1 = await zip.files['xl/worksheets/sheet1.xml'].async('string');
       const datePrep = A.date_prepared || new Date().toISOString().slice(0, 10);
       xml1 = setSharedStr(xml1, 'B14', datePrep);
+
+      // v50.5: Cover B8-B12 are FORMULAS referencing Assumptions!B5-B8/B11-B12.
+      // fullCalcOnLoad recalcs them in Excel desktop, but web/mobile previewers
+      // show cached values. We patch the cached <v> directly so the file looks
+      // correct in any viewer. Note: these cells are t="str" (formula-string),
+      // so we update the cached string in place while preserving <f>...</f>.
+      const startQ = (Number(A.start_mo) || 1) <= 3 ? 'Q1' : (Number(A.start_mo) <= 6 ? 'Q2' : (Number(A.start_mo) <= 9 ? 'Q3' : 'Q4'));
+      const startStr = startQ + ' ' + (A.start_yr || new Date().getFullYear());
+      if (A.study_name)     xml1 = patchCachedStrIn(xml1, 'B8',  A.study_name);
+      if (A.sponsor)        xml1 = patchCachedStrIn(xml1, 'B9',  A.sponsor);
+      if (A.phase)          xml1 = patchCachedStrIn(xml1, 'B10', A.phase);
+      if (A.indication)     xml1 = patchCachedStrIn(xml1, 'B11', A.indication);
+      xml1 = patchCachedStrIn(xml1, 'B12', startStr);
+
       zip.file('xl/worksheets/sheet1.xml', xml1);
     }
 
-    // ── Sheet 3: Vantage Output — Date Prepared (C8) as date serial ──
+    // ── Sheet 3: Vantage Output — Date Prepared (C8) + cached identity (C4-C7, C25) ──
     {
       let xml3 = await zip.files['xl/worksheets/sheet3.xml'].async('string');
       const dp = A.date_prepared ? new Date(A.date_prepared) : new Date();
       const serial = excelSerial(dp.getFullYear(), dp.getMonth() + 1, dp.getDate());
       xml3 = setNumIn(xml3, 'C8', serial);
+
+      // v50.5: C4-C7 are formula cells referencing Assumptions identity (B5-B8); C25 references B25.
+      // Same caching issue as Cover B8-B12: web previewers see stale "[Study Name / Protocol]" placeholders.
+      if (A.study_name) xml3 = patchCachedStrIn(xml3, 'C4', A.study_name);
+      if (A.sponsor)    xml3 = patchCachedStrIn(xml3, 'C5', A.sponsor);
+      if (A.phase)      xml3 = patchCachedStrIn(xml3, 'C6', A.phase);
+      if (A.indication) xml3 = patchCachedStrIn(xml3, 'C7', A.indication);
+      // C25 = enrolled patient count (numeric formula cell)
+      if (A.subj_enroll) xml3 = patchCachedIn(xml3, 'C25', Number(A.subj_enroll));
+
       zip.file('xl/worksheets/sheet3.xml', xml3);
     }
 

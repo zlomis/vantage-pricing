@@ -123,7 +123,24 @@ const INDICATION_TRIGGERS = [
   {
     archetype: "oncology_chemo_combo",
     label: "Oncology — chemotherapy combo",
-    keywords: ["FOLFIRINOX", "mFOLFIRINOX", "FOLFOX", "FOLFIRI", "CHOP", "R-CHOP", "DAC", "carboplatin", "cisplatin", "doxorubicin", "gemcitabine", "paclitaxel"],
+    keywords: [
+      // Specific chemo regimens
+      "FOLFIRINOX", "mFOLFIRINOX", "FOLFOX", "FOLFIRI", "CHOP", "R-CHOP", "DAC",
+      "carboplatin", "cisplatin", "doxorubicin", "gemcitabine", "paclitaxel",
+      // Common solid-tumor indications (catches generic "X cancer" without IO/chemo named)
+      "pancreatic cancer", "pancreatic carcinoma", "pancreatic adenocarcinoma",
+      "breast cancer", "breast carcinoma",
+      "lung cancer", "non-small cell lung", "NSCLC", "small cell lung", "SCLC",
+      "colorectal cancer", "colorectal carcinoma", "colon cancer", "rectal cancer",
+      "gastric cancer", "stomach cancer", "esophageal cancer",
+      "ovarian cancer", "endometrial cancer", "cervical cancer",
+      "prostate cancer", "bladder cancer", "renal cell carcinoma",
+      "hepatocellular carcinoma", "HCC", "cholangiocarcinoma",
+      "head and neck cancer", "head & neck cancer",
+      "metastatic", "advanced solid tumor", "unresectable",
+      // Generic cancer fallback (lowest priority — comes after IO and hematologic checks above)
+      "cancer", "carcinoma", "malignant", "malignancy", "oncology", "tumor", "tumour"
+    ],
     phaseFilter: null,
     piTier: "oncology",
     standardCategories: [
@@ -144,7 +161,7 @@ const INDICATION_TRIGGERS = [
       "Pregnancy test — urine (β-hCG qualitative)"
     ],
     subjectCompensation: "none",
-    notes: "OT-01-P201 archetype. Per-pt $15,000-25,000 cycle-based."
+    notes: "OT-01-P201 archetype. Per-pt $15,000-25,000 cycle-based. Default oncology archetype when no IO/heme matches."
   },
   {
     archetype: "hematologic_malignancy",
@@ -501,13 +518,22 @@ function classifyIndication(indicationStr, phase, population) {
   if (!indicationStr) indicationStr = '';
   const lower = indicationStr.toLowerCase();
   const phaseStr = String(phase || '').toLowerCase();
+  const popLower = String(population || '').toLowerCase();
 
-  // Healthy volunteer takes precedence (Phase 1 specifically)
-  if (population && population.toLowerCase().includes('healthy')) {
-    return INDICATION_TRIGGERS.find(t => t.archetype === 'healthy_volunteer_phase1');
-  }
-  if (lower.includes('healthy volunteer') || lower.includes('biosimilarity')) {
-    return INDICATION_TRIGGERS.find(t => t.archetype === 'healthy_volunteer_phase1');
+  // ─── HARD CANCER VETO ───────────────────────────────────────────────
+  // If the indication contains any cancer terminology, healthy_volunteer_phase1
+  // is forbidden, regardless of how PK/ADA-heavy the SoA is. This prevents the
+  // Plenty Ustek baseline from being applied to oncology trials.
+  const isCancer = /\b(cancer|tumor|tumour|carcinoma|malignant|malignanc|oncology|oncologic|leukemia|leukaemia|lymphoma|myeloma|sarcoma|glioma|melanoma|metastatic|adenocarcinoma|nsclc|sclc|hcc)\b/i.test(indicationStr);
+
+  // Healthy volunteer takes precedence (Phase 1 specifically) — but ONLY if no cancer veto
+  if (!isCancer) {
+    if (popLower.includes('healthy')) {
+      return INDICATION_TRIGGERS.find(t => t.archetype === 'healthy_volunteer_phase1');
+    }
+    if (lower.includes('healthy volunteer') || lower.includes('biosimilarity')) {
+      return INDICATION_TRIGGERS.find(t => t.archetype === 'healthy_volunteer_phase1');
+    }
   }
 
   // Try keyword match in priority order (specific → general)
@@ -520,6 +546,12 @@ function classifyIndication(indicationStr, phase, population) {
         return trigger;
       }
     }
+  }
+
+  // Final fallback for cancer indications that didn't match a more specific archetype:
+  // pick oncology_chemo_combo as the safest oncology default.
+  if (isCancer) {
+    return INDICATION_TRIGGERS.find(t => t.archetype === 'oncology_chemo_combo');
   }
 
   // Fallback — return null and let caller decide
