@@ -1,5 +1,5 @@
 <!-- vantage-v49-encapsulated -->
-<!-- Vantage Pricing Engine v50.5-calibration-fixes - 2026-04-29 -->
+<!-- Vantage Pricing Engine v50.6-rate-limit-fix - 2026-04-30 -->
 <!-- v49 changes:
      - Deal Structure (Tigermed / Local CRO) as top-level choice
      - Date Prepared field replaces volatile =TODAY()
@@ -703,6 +703,13 @@ main {
     <button class="btn-ghost" onclick="goTo('upload')">← New file</button>
   </div>
 
+  <!-- v50.6: Library mode status banner — shows if SoA extraction succeeded or fell back -->
+  <div id="libStatusBanner" style="display:none; margin:12px 0; padding:12px 16px; border-radius:8px; font-size:13px; line-height:1.5;">
+    <span id="libStatusIcon" style="margin-right:8px; font-weight:600;"></span>
+    <span id="libStatusText"></span>
+    <button id="libStatusRetry" onclick="retrySoAExtraction()" style="display:none; margin-left:12px; padding:4px 10px; border-radius:4px; border:1px solid currentColor; background:transparent; color:inherit; font-size:12px; cursor:pointer;">Retry</button>
+  </div>
+
   <!-- Study identity banner -->
   <div class="study-bar">
     <div class="study-item"><div class="study-lbl">Study</div><div class="study-val" id="bStudy">—</div></div>
@@ -1077,66 +1084,140 @@ async function handleFile(f){
     // Runs only for PDF inputs. Failure is non-fatal — if extraction fails or
     // the synopsis lacks an SoA, we fall back to legacy mode (static $136/$1234
     // healthy-vol defaults). Stored on window for generateModel() to pick up.
+    // ── v50.6: SoA extraction extracted into a function so it can be retried from the
+    // Review screen if the first attempt 429s. Also adds a 1.5s delay before the call
+    // to space it out from the assumption-extraction call (which just ran 1-2s ago).
+    // Reduces back-to-back rate-limit hits.
     window.soaManifest = null;
     window.libraryCC = null;  // v50.3: holds backend-computed Clinical Revenue when manifest is present
+    window._lastPdfContent = null;  // saved for retry
+    window._lastPdfAssumptions = null;
     if (ftype === 'pdf') {
-      try {
-        document.getElementById('spinFile').textContent='Extracting Schedule of Activities (line-item costs)…';
-        console.log('[Vantage] Calling SoA extraction…');
-        const soaResp = await fetch('/api/claude', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            mode: 'extractSoA',
-            pdf_base64: content,
-            assumptions: { study_name: A.study_name, indication: A.indication, phase: A.phase, population: A.population },
-          }),
-        });
-        if (soaResp.ok) {
-          const soaData = await soaResp.json();
-          const soaTxt = (soaData.content || []).map(b => b.text || '').join('');
-          const soaClean = soaTxt.replace(/```json|```/g, '').trim();
-          window.soaManifest = JSON.parse(soaClean);
-          console.log('[Vantage] SoA manifest:', window.soaManifest);
-          if (window.soaManifest && Array.isArray(window.soaManifest.procedures)) {
-            console.log('[Vantage] SoA procedures extracted:', window.soaManifest.procedures.length, 'archetype:', window.soaManifest.indication_archetype);
-          }
-
-          // ── v50.3: ask backend to compute manifest-driven Clinical Revenue
-          // for the Review banner. Fast (~200ms), runs same code as full generate.
-          // Failure is non-fatal — banner falls back to legacy approximation.
-          try {
-            document.getElementById('spinFile').textContent='Computing Clinical Revenue…';
-            const calcResp = await fetch('/.netlify/functions/generate-excel', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ assumptions: A, soa_manifest: window.soaManifest, calcOnly: true })
-            });
-            if (calcResp.ok) {
-              window.libraryCC = await calcResp.json();
-              console.log('[Vantage] Library CC preview:', window.libraryCC);
-            } else {
-              console.warn('[Vantage] calcOnly preview returned non-OK status — banner will use legacy approximation');
-            }
-          } catch (calcErr) {
-            console.warn('[Vantage] calcOnly preview failed (non-fatal):', calcErr.message);
-            window.libraryCC = null;
-          }
-        } else {
-          console.warn('[Vantage] SoA extraction returned non-OK status — falling back to legacy CC mode');
-        }
-      } catch (e) {
-        console.warn('[Vantage] SoA extraction failed (will use legacy CC mode):', e.message);
-        window.soaManifest = null;
-        window.libraryCC = null;
-      }
+      window._lastPdfContent = content;
+      window._lastPdfAssumptions = A;
+      // Pace the API calls: assumption extract just finished, give Anthropic's
+      // rate limiter a moment before the second (larger) SoA call.
+      await new Promise(r => setTimeout(r, 1500));
+      await runSoAExtraction(content, A);
     }
 
     goTo('review');
+    // After review screen renders, surface library mode status banner
+    updateLibraryStatusBanner();
+  } catch (err) {
+    console.error('[Vantage] Extraction failed:', err);
+    showErr('Extraction failed: ' + err.message);
+    goTo('upload');
+  }
+}
 
-  } catch(e){
-    console.error('[Vantage] Error:', e);
-    showErr('Error: '+e.message);
+// v50.6: visible status banner on review screen — was previously console-only
+function updateLibraryStatusBanner() {
+  const banner = document.getElementById('libStatusBanner');
+  const icon = document.getElementById('libStatusIcon');
+  const text = document.getElementById('libStatusText');
+  const retryBtn = document.getElementById('libStatusRetry');
+  if (!banner || !icon || !text || !retryBtn) return;
+
+  if (!window._lastPdfContent) {
+    // Not a PDF input (text/docx) — library mode wasn't attempted; hide banner
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = 'block';
+  if (window.soaManifest && window.soaManifest.procedures) {
+    // Success: library mode active
+    banner.style.background = 'rgba(34, 197, 94, 0.08)';
+    banner.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+    banner.style.color = '#a3e0bd';
+    icon.textContent = '✓';
+    const archetype = window.soaManifest.indication_archetype || 'unknown';
+    const procCount = window.soaManifest.procedures.length;
+    text.textContent = `Library mode active — ${procCount} procedures extracted, archetype: ${archetype.replace(/_/g, ' ')}`;
+    retryBtn.style.display = 'none';
+  } else {
+    // Fell back to legacy mode
+    banner.style.background = 'rgba(251, 146, 60, 0.10)';
+    banner.style.border = '1px solid rgba(251, 146, 60, 0.45)';
+    banner.style.color = '#fbb878';
+    icon.textContent = '⚠';
+    text.textContent = 'Schedule of Activities extraction failed — using healthy-volunteer Phase 1 baseline. Clinical costs may not reflect indication-specific procedures.';
+    retryBtn.style.display = 'inline-block';
+  }
+}
+
+// v50.6: retry button on the banner
+async function retrySoAExtraction() {
+  const banner = document.getElementById('libStatusBanner');
+  const icon = document.getElementById('libStatusIcon');
+  const text = document.getElementById('libStatusText');
+  const retryBtn = document.getElementById('libStatusRetry');
+  if (!window._lastPdfContent) return;
+
+  banner.style.background = 'rgba(59, 130, 246, 0.10)';
+  banner.style.border = '1px solid rgba(59, 130, 246, 0.45)';
+  banner.style.color = '#93c5fd';
+  icon.textContent = '↻';
+  text.textContent = 'Retrying Schedule of Activities extraction…';
+  retryBtn.style.display = 'none';
+
+  await runSoAExtraction(window._lastPdfContent, window._lastPdfAssumptions);
+  updateLibraryStatusBanner();
+}
+
+// v50.6: extracted SoA call so retry can re-invoke it
+async function runSoAExtraction(content, A) {
+  try {
+    console.log('[Vantage] Calling SoA extraction…');
+    const soaResp = await fetch('/api/claude', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        mode: 'extractSoA',
+        pdf_base64: content,
+        assumptions: { study_name: A.study_name, indication: A.indication, phase: A.phase, population: A.population },
+      }),
+    });
+    if (soaResp.ok) {
+      const soaData = await soaResp.json();
+      const soaTxt = (soaData.content || []).map(b => b.text || '').join('');
+      const soaClean = soaTxt.replace(/```json|```/g, '').trim();
+      window.soaManifest = JSON.parse(soaClean);
+      console.log('[Vantage] SoA manifest:', window.soaManifest);
+      if (window.soaManifest && Array.isArray(window.soaManifest.procedures)) {
+        console.log('[Vantage] SoA procedures extracted:', window.soaManifest.procedures.length, 'archetype:', window.soaManifest.indication_archetype);
+      }
+
+      // v50.3: ask backend to compute manifest-driven Clinical Revenue for the Review banner
+      try {
+        const calcResp = await fetch('/.netlify/functions/generate-excel', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ assumptions: A, soa_manifest: window.soaManifest, calcOnly: true })
+        });
+        if (calcResp.ok) {
+          window.libraryCC = await calcResp.json();
+          console.log('[Vantage] Library CC preview:', window.libraryCC);
+          // If we are already on the review screen, refresh totals
+          if (typeof renderReview === 'function' && document.getElementById('s-review')?.classList.contains('active')) {
+            renderReview();
+          }
+        } else {
+          console.warn('[Vantage] calcOnly preview returned non-OK status — banner will use legacy approximation');
+        }
+      } catch (calcErr) {
+        console.warn('[Vantage] calcOnly preview failed (non-fatal):', calcErr.message);
+        window.libraryCC = null;
+      }
+    } else {
+      console.warn('[Vantage] SoA extraction returned non-OK status — falling back to legacy CC mode (status:', soaResp.status, ')');
+      window.soaManifest = null;
+      window.libraryCC = null;
+    }
+  } catch (e) {
+    console.warn('[Vantage] SoA extraction failed (will use legacy CC mode):', e.message);
+    window.soaManifest = null;
+    window.libraryCC = null;
   }
 }
 

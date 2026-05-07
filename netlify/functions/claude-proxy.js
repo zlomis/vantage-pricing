@@ -1,3 +1,11 @@
+// vantage-v50.6-claude-proxy
+// v50.6 (2026-04-30): added retry-with-backoff for 429 rate-limit responses from Anthropic.
+//  - On 429, reads `retry-after` header (in seconds) and waits, then retries up to 2 times.
+//  - If `retry-after` is absent, uses exponential backoff: 5s, 12s.
+//  - Surfaces the final result (success or final 429) to the client, but client
+//    will see legacy CC fallback far less often.
+//  - Applied to both the extractSoA branch and the legacy passthrough branch.
+//
 // vantage-v50-claude-proxy
 // v50 changes (additive over v49):
 //  - When request body has { mode: 'extractSoA', pdf_base64, assumptions? }, the proxy
@@ -9,6 +17,36 @@
 //    passed through unchanged — byte-identical v49 behavior.
 const fs = require('fs');
 const path = require('path');
+
+// ── v50.6: retry helper ──────────────────────────────────────────────
+// Calls Anthropic API; on 429, respects retry-after header (or falls back to
+// exponential backoff) and retries up to maxRetries times. Returns the final
+// Response object regardless of outcome — caller decides what to do.
+async function fetchWithRetry(url, options, maxRetries = 2) {
+  const backoffsMs = [5000, 12000];  // 5s, 12s
+  let lastResponse = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, options);
+    lastResponse = response;
+    if (response.status !== 429) return response;  // success or non-rate-limit error — done
+
+    if (attempt === maxRetries) {
+      console.warn(`[claude-proxy] 429 after ${maxRetries + 1} attempts — giving up`);
+      return response;
+    }
+
+    // Compute wait time: prefer retry-after header (in seconds), else exponential backoff
+    let waitMs = backoffsMs[attempt] || 12000;
+    const retryAfter = response.headers.get('retry-after');
+    if (retryAfter) {
+      const parsed = parseInt(retryAfter, 10);
+      if (!isNaN(parsed)) waitMs = Math.max(parsed * 1000, 1000);  // header is in seconds
+    }
+    console.warn(`[claude-proxy] 429 received on attempt ${attempt + 1} — waiting ${waitMs}ms before retry`);
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  }
+  return lastResponse;
+}
 
 // Cached on warm starts to avoid re-reading large markdown files on every invoke
 let _cachedPrompt = null;
@@ -116,7 +154,7 @@ exports.handler = async function(event, context) {
         ],
       };
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,8 +167,8 @@ exports.handler = async function(event, context) {
       return { statusCode: response.status, headers, body: JSON.stringify(data) };
     }
 
-    // ── Legacy passthrough (v49 behavior, byte-identical) ─────────────
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // ── Legacy passthrough (v49 behavior) — also benefits from retry on 429 ─────────────
+    const response = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
