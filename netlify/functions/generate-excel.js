@@ -1,3 +1,13 @@
+// vantage-v50.7.1-archetype-normalize
+// v50.7.1 (2026-05-10) hotfix: SoA manifest field name normalization.
+//   - Sonnet returns `indication_archetype` per the prompt schema.
+//   - vantageCalcCC and Cover B15 patch code read `manifest.archetype`.
+//   - Pre-fix: library mode worked (procedures correct) but archetype metadata
+//     was always undefined → Cover B15 always said "Legacy", cancer veto never
+//     fired, piTier fell through to indication-string classifier.
+//   - Post-fix: normalize manifest.archetype from manifest.indication_archetype
+//     at the entry of vantageCalcCC. All downstream code now sees the archetype.
+//
 // vantage-v50.7-banner-archetype-gantt
 // v50.7 (2026-05-07): five UX/calibration fixes from OT01P201 + Stelara calibration runs.
 //
@@ -192,6 +202,12 @@ function vantageCalcMS(A) {
 //      (e16, e36, e58, e60, e63, e65, f65, f67) so existing template-cell-patching
 //      code keeps working. Selects baseline_v3.xlsx with expanded CC sections.
 function vantageCalcCC(A, manifest) {
+  // v50.7.1 hotfix: SoA prompt returns `indication_archetype` but downstream code
+  // reads `manifest.archetype`. Normalize on entry so cancer veto, piTier lookup,
+  // and the Cover B15 archetype label all work correctly.
+  if (manifest && manifest.indication_archetype && !manifest.archetype) {
+    manifest.archetype = manifest.indication_archetype;
+  }
   const subj      = Number(A.subj_enroll) || 0;
   const screen    = Math.round(subj * 1.3);
   const sites     = Number(A.kz_sites) || 3;
