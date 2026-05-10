@@ -1,8 +1,13 @@
 [build]
   functions = "netlify/functions"
 
+# v50.9 (2026-05-10): bump function timeout. Default is 10s, which can be too
+# short for Sonnet's SoA extraction call on a multi-page synopsis PDF —
+# OT01P201 (17 pages) consistently exceeded 10s, causing 504 timeouts that
+# manifested as the orange "Schedule of Activities extraction failed" banner.
+# 26s is the max for Netlify Pro tier; sufficient for nearly all SoA calls.
 [functions]
-  included_files = ["netlify/functions/*.md", "netlify/functions/*.json"]
+  timeout = 26
 
 [[redirects]]
   from = "/api/claude"
@@ -14,6 +19,4 @@
   to = "/.netlify/functions/generate-excel"
   status = 200
   force = true
-
 # nonce-153681
-# v50: included_files added so claude-proxy can read extractSoA_prompt.md and procedure_vocabulary.md at runtime

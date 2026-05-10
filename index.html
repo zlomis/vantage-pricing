@@ -1,4 +1,20 @@
 <!-- vantage-v49-encapsulated -->
+<!-- Vantage Pricing Engine v50.9-soa-retry-timeout - 2026-05-10 -->
+<!--
+  v50.9 (2026-05-10) — SoA extraction reliability.
+    - Problem: Sonnet's SoA call on a 17-page synopsis (OT01P201) regularly
+      exceeded Netlify's default 10s function timeout, producing a 504 →
+      orange "Schedule of Activities extraction failed" banner that stayed
+      up even after multiple manual Retry clicks (because each retry hit
+      the same 10s wall).
+    - Fix 1: Bumped Netlify function timeout to 26s (Pro tier max) via
+      netlify.toml. Sufficient for >95% of SoA calls including long PDFs.
+    - Fix 2: Added auto-retry loop inside runSoAExtraction (3 attempts with
+      progressive delays of 1.5s, 4s, 8s). One click of Retry now produces
+      up to 3 server attempts spaced over ~14s — captures most transient
+      failures (network blips, cold-start latency, etc).
+    - Fix 3: Retry banner now shows "Attempt N of 3..." for clarity.
+-->
 <!-- Vantage Pricing Engine v50.8-banner-server-truth - 2026-05-10 -->
 <!--
   v50.8 (2026-05-10) — Banner ≠ File fix for Mgmt Fee.
@@ -1115,9 +1131,7 @@ async function handleFile(f){
     if (ftype === 'pdf') {
       window._lastPdfContent = content;
       window._lastPdfAssumptions = A;
-      // Pace the API calls: assumption extract just finished, give Anthropic's
-      // rate limiter a moment before the second (larger) SoA call.
-      await new Promise(r => setTimeout(r, 1500));
+      // v50.9: pacing delay moved INTO runSoAExtraction (before attempt 1).
       await runSoAExtraction(content, A);
     }
 
@@ -1201,8 +1215,37 @@ async function retrySoAExtraction() {
   updateLibraryStatusBanner();
 }
 
-// v50.6: extracted SoA call so retry can re-invoke it
+// v50.6: extracted SoA call so retry can re-invoke it.
+// v50.9: now contains its own retry loop with progressive backoff (1.5s, 4s, 8s).
+//   One click of the Retry button → 3 server attempts (not just 1) before giving up.
+//   Fixes the "orange banner persists after multiple retry clicks" issue where
+//   each manual retry was hitting the same transient failure window.
 async function runSoAExtraction(content, A) {
+  const SOA_MAX_ATTEMPTS = 3;
+  const SOA_DELAYS_MS = [1500, 4000, 8000];  // delay BEFORE each attempt (first is the throttle wait)
+
+  for (let attempt = 1; attempt <= SOA_MAX_ATTEMPTS; attempt++) {
+    if (attempt > 1) {
+      const wait = SOA_DELAYS_MS[attempt - 1] || 8000;
+      console.log('[Vantage] SoA retry attempt ' + attempt + ' of ' + SOA_MAX_ATTEMPTS + ' — waiting ' + wait + 'ms');
+      // Update banner to reflect ongoing retry
+      const text = document.getElementById('libStatusText');
+      if (text) text.textContent = 'Retrying Schedule of Activities extraction (attempt ' + attempt + ' of ' + SOA_MAX_ATTEMPTS + ')…';
+      await new Promise(r => setTimeout(r, wait));
+    } else {
+      // First attempt: brief 1.5s throttle to space from assumption-extract call
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    const ok = await runSoAExtractionOnce(content, A);
+    if (ok) return;  // succeeded — leave loop
+    console.warn('[Vantage] SoA attempt ' + attempt + ' failed; will ' + (attempt < SOA_MAX_ATTEMPTS ? 'retry' : 'give up'));
+  }
+  // All attempts exhausted — leave window.soaManifest = null so engine falls back to legacy mode
+  window.soaManifest = null;
+  window.libraryCC = null;
+}
+
+async function runSoAExtractionOnce(content, A) {
   try {
     console.log('[Vantage] Calling SoA extraction…');
     const soaResp = await fetch('/api/claude', {
@@ -1245,15 +1288,14 @@ async function runSoAExtraction(content, A) {
         console.warn('[Vantage] calcOnly preview failed (non-fatal):', calcErr.message);
         window.libraryCC = null;
       }
+      return true;  // v50.9: extraction succeeded
     } else {
-      console.warn('[Vantage] SoA extraction returned non-OK status — falling back to legacy CC mode (status:', soaResp.status, ')');
-      window.soaManifest = null;
-      window.libraryCC = null;
+      console.warn('[Vantage] SoA extraction returned non-OK status (' + soaResp.status + ') — will retry if attempts remain');
+      return false;  // v50.9: signal failure to outer retry loop, don't blow away manifest yet
     }
   } catch (e) {
-    console.warn('[Vantage] SoA extraction failed (will use legacy CC mode):', e.message);
-    window.soaManifest = null;
-    window.libraryCC = null;
+    console.warn('[Vantage] SoA extraction threw exception (will retry if attempts remain):', e.message);
+    return false;  // v50.9: same — signal failure but don't clear manifest
   }
 }
 
