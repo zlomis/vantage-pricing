@@ -1,4 +1,21 @@
 <!-- vantage-v49-encapsulated -->
+<!-- Vantage Pricing Engine v50.8-banner-server-truth - 2026-05-10 -->
+<!--
+  v50.8 (2026-05-10) — Banner ≠ File fix for Mgmt Fee.
+    - Problem: Review banner Mgmt could disagree with the downloaded xlsx (file)
+      Mgmt Fee. Both functions are line-for-line identical, but any race between
+      Sonnet's extract setting A.deal_structure and applyDealStructureDefaults
+      not firing could leave A.* in an inconsistent state at banner-render time.
+    - Fix 1: calcEstimate() now prefers window.libraryCC.mgmtFee (server's
+      authoritative computation) over client-side calcMgmtFee(). Same pattern
+      that Clinical Revenue already uses via libraryCC.clinRev. Eliminates drift.
+    - Fix 2: refireCalcOnly() now calls updateEstimate() after libraryCC update,
+      not just updateBanner(). Previously, refire updated state but the visible
+      banner Mgmt/Clinical/Total/EBITDA numbers never refreshed.
+    - Fix 3: renderReview() fires an immediate refireCalcOnly() on entry, so
+      banner reflects current A.* (rather than the stale initial calcOnly from
+      page-load time).
+-->
 <!-- Vantage Pricing Engine v50.7-banner-archetype-gantt - 2026-05-07 -->
 <!-- v49 changes:
      - Deal Structure (Tigermed / Local CRO) as top-level choice
@@ -1486,7 +1503,18 @@ function calcMgmtFee(){
 }
 
 function calcEstimate(mgmtFeeOverride, clinRevOverride){
-  const grand=mgmtFeeOverride!=null?mgmtFeeOverride:calcMgmtFee();
+  // v50.8: prefer server's libraryCC.mgmtFee (matches file) over client calcMgmtFee()
+  // to eliminate banner-vs-file drift. The two should compute identical numbers, but
+  // any race condition in A.* state can cause the client view to disagree with the
+  // server. Server is authoritative because that's what the downloaded xlsx uses.
+  let grand;
+  if (mgmtFeeOverride != null) {
+    grand = mgmtFeeOverride;                                     // Done screen: explicit override
+  } else if (window.libraryCC && window.libraryCC.mgmtFee != null) {
+    grand = window.libraryCC.mgmtFee;                            // Review banner: server's exact value
+  } else {
+    grand = calcMgmtFee();                                       // legacy fallback (pre-calcOnly)
+  }
 
   let clinRev, cro;
   if (clinRevOverride != null) {
@@ -1537,6 +1565,11 @@ function updateEstimate(){
 // ── REVIEW UI ────────────────────────────────────────
 function renderReview(){
   updateBanner();
+  // v50.8: fire a calcOnly refresh on every Review entry to ensure the banner
+  // reflects the current A.* state (especially after Sonnet extract may have
+  // changed deal_structure / financial levers without firing field-change events).
+  // Without this, the banner can show stale values from the very first calcOnly call.
+  refireCalcOnly();
   const tabsEl=document.getElementById('tabs');
   tabsEl.innerHTML='';
   GROUPS.forEach(g=>{
@@ -1653,7 +1686,11 @@ async function refireCalcOnly() {
     }
     window.libraryCC = await resp.json();
     console.log('[Vantage] Banner refreshed:', window.libraryCC);
+    // v50.8: updateBanner only refreshes study/sponsor/phase/dur/sites — does NOT
+    // touch the financial banner numbers. Must call updateEstimate to refresh
+    // Mgmt Fee / Clinical / Total / EBITDA from the new libraryCC values.
     updateBanner();
+    updateEstimate();
   } catch (e) {
     console.warn('[Vantage] calcOnly refire failed (non-fatal):', e.message);
   }
