@@ -134,7 +134,7 @@ exports.handler = async function(event, context) {
       A.site_pay     = sites * Math.ceil(total / 3);
       A.periodic_saf = Math.max(1, Math.ceil(total / 12));
 
-      A.sites_screen = Math.round(sites * 1.5);
+      A.sites_screen = Number(A.kz_sites) + 1;  // v50.7: +1 buffer (matches manual baselines)
       A.ctra         = sites;
       A.ec_annual    = Math.max(1, Math.ceil(total / 12));
       A.subj_screen  = Math.round(subj * 1.3);

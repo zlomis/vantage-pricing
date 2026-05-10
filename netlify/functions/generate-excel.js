@@ -1,3 +1,38 @@
+// vantage-v50.7-banner-archetype-gantt
+// v50.7 (2026-05-07): five UX/calibration fixes from OT01P201 + Stelara calibration runs.
+//
+//  Fixes:
+//   1. COVER B15 dynamic archetype label. Was hardcoded "Healthy Volunteer Phase 1 default"
+//      regardless of what archetype Library v1 selected. Now writes:
+//        - "Library v1 — Oncology Chemo Combo" (when library mode active)
+//        - "Legacy — Healthy Volunteer Phase 1 default" (legacy fallback)
+//      Patched via setSharedStr in the Cover sheet block.
+//
+//   2. SITES SCREENED auto-derive from KZ Sites: was Math.round(sites * 1.5) which
+//      overstated for small trials (3 KZ sites → 5 screened, but manual baselines use 4).
+//      Now: kz_sites + 1 (one feasibility-fail buffer). Matches all manual baselines.
+//      Updated in computeDerivedDefaults (index.html), generate-excel.js, generate-word.js.
+//      Also added re-derivation in field-change handler so changing kz_sites updates it live.
+//
+//   3. P&L MILESTONE GANTT — fix FSI/25% Enrolled column collision.
+//      Pre-fix: FSI formula B13+2 collided with 25%=B13+ROUND(B14*0.25) for short-enrollment
+//      trials. On Stelara (startup=4, enroll=6) both rendered at Month 6.
+//      Post-fix: FSI=B13+1 (FSI at start of enrollment, not +2). Matches Word log convention.
+//      Patched in generate-excel.js by replacing all 54 occurrences of "Assumptions!B13+2"
+//      with "Assumptions!B13+1" in sheet8.xml; also clears cached ◆ markers for row 35.
+//
+//   4. BANNER REFIRE on financial-lever changes (index.html). Pre-fix: Review banner showed
+//      stale calcOnly preview from upload time; user edits to markup/contingency/sites/subj
+//      didn't propagate, so banner ≠ downloaded file. Now: debounced refireCalcOnly() fires
+//      500ms after any change in REFIRE_TRIGGER_FIELDS (~17 fields), updates banner.
+//
+//   5. INDICATION CHANGE → CLIENT-SIDE RECLASSIFY + RE-EXTRACT button (index.html). Pre-fix:
+//      changing the indication on Review screen did nothing — archetype stayed locked to
+//      Sonnet's first guess (problematic for Plenty's dual-trial PDF where Sonnet picks
+//      Pembro and user wants Stelara). Now: clientClassifyIndication() runs on indication
+//      change, updates manifest.indication_archetype, and the Library status banner shows
+//      a "Re-extract procedures" button if the user wants to actually rerun the SoA call.
+//
 // vantage-v50.5-calibration-fixes
 // v50.5 (2026-04-29): OT01P201 calibration debug pass.
 //
@@ -492,7 +527,7 @@ exports.handler = async function(event, context) {
       A.periodic_saf = Math.max(1, Math.ceil(total / 12));
 
       // sites_feas not patched — baseline B22 is =ROUND(B25/B21,0) formula
-      A.sites_screen = Math.round(sites * 1.5);
+      A.sites_screen = Number(A.kz_sites) + 1;  // v50.7: +1 buffer (matches manual baselines)
       A.ctra         = sites;
       A.ec_annual    = Math.max(1, Math.ceil(total / 12));
       // subj_screen always computed: enrolled x 1.3 — never extracted
@@ -868,6 +903,35 @@ exports.handler = async function(event, context) {
       zip.file('xl/worksheets/sheet7.xml', xml7);
     }
 
+    // ── v50.7: Sheet 8 (P&L) — fix milestone gantt collision ───────────────────
+    // Pre-fix: FSI formula was B13+2, which for short enrollment (≤8mo) collided
+    // with the 25% Enrolled milestone (B13+ROUND(B14*0.25)). On Stelara (startup=4,
+    // enroll=6) both rendered in column 8 / Month 6 — Charlie noticed this.
+    // Post-fix: FSI is B13+1 (FSI happens at the start of enrollment, not 2 months in).
+    //   Stelara: FSI=Mo 5, 25%=Mo 6 → no collision
+    //   OT01P201: FSI=Mo 5, 25%=Mo 10 → no collision (Mo 5 instead of Mo 6, more accurate)
+    // Also matches the Word log convention which already uses startup+1.
+    {
+      let xml8 = await zip.files['xl/worksheets/sheet8.xml'].async('string');
+      // Replace all 54 occurrences of "Assumptions!B13+2" with "Assumptions!B13+1" in
+      // the FSI gantt row (B35). This is the FSI row only — other rows use ROUND() and
+      // are correct.
+      // We use a global replace on the exact formula string. The formulas are XML-encoded
+      // (e.g., &quot; for quotes) but B13+2 itself is plain text in <f> tags.
+      const before = (xml8.match(/Assumptions!B13\+2/g) || []).length;
+      xml8 = xml8.replace(/Assumptions!B13\+2/g, 'Assumptions!B13+1');
+      const after = (xml8.match(/Assumptions!B13\+1/g) || []).length;
+      // Also patch cached <v> values where applicable: cell with <v>◆</v> means a marker
+      // is currently rendered. Excel will recompute these on open via fullCalcOnLoad,
+      // so cached values for the FSI row will stay until recalc. To avoid showing stale
+      // markers, we clear any cached marker in row 35:
+      xml8 = xml8.replace(
+        /(<c r="[A-Z]+35"[^>]*>(?:<f[^>]*>[^<]*<\/f>))<v>◆<\/v>/g,
+        '$1<v></v>'
+      );
+      zip.file('xl/worksheets/sheet8.xml', xml8);
+    }
+
     // ── Sheet 3: Vantage Output — patch cached values that depend on MS subtotals ──
     {
       let xml3 = await zip.files['xl/worksheets/sheet3.xml'].async('string');
@@ -937,6 +1001,19 @@ exports.handler = async function(event, context) {
       let xml1 = await zip.files['xl/worksheets/sheet1.xml'].async('string');
       const datePrep = A.date_prepared || new Date().toISOString().slice(0, 10);
       xml1 = setSharedStr(xml1, 'B14', datePrep);
+
+      // v50.7: Cover B15 — dynamic archetype label.
+      // Was hardcoded "Baseline v2.0 - Healthy Volunteer Phase 1 default" in the template.
+      // Now reflects what actually ran: Library v1 with the selected archetype, or Legacy mode.
+      let archetypeLabel;
+      if (cc && cc.archetype) {
+        // Library mode ran with an archetype — humanize the snake_case name
+        const human = cc.archetype.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        archetypeLabel = `Library v1 — ${human}`;
+      } else {
+        archetypeLabel = 'Legacy — Healthy Volunteer Phase 1 default';
+      }
+      xml1 = setSharedStr(xml1, 'B15', archetypeLabel);
 
       // v50.5: Cover B8-B12 are FORMULAS referencing Assumptions!B5-B8/B11-B12.
       // fullCalcOnLoad recalcs them in Excel desktop, but web/mobile previewers

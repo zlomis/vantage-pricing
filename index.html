@@ -1,5 +1,5 @@
 <!-- vantage-v49-encapsulated -->
-<!-- Vantage Pricing Engine v50.6-rate-limit-fix - 2026-04-30 -->
+<!-- Vantage Pricing Engine v50.7-banner-archetype-gantt - 2026-05-07 -->
 <!-- v49 changes:
      - Deal Structure (Tigermed / Local CRO) as top-level choice
      - Date Prepared field replaces volatile =TODAY()
@@ -948,7 +948,10 @@ function computeDerivedDefaults() {
   setIfNull('periodic_saf',Math.max(1, Math.ceil(total / 12)));
 
   // Always recompute these — not extracted, always derived from kz_sites + timeline
-  A.sites_screen = Math.round(sites * 1.5);
+  // v50.7: Sites Screened = KZ Sites + 1 (one feasibility-fail buffer).
+  // Matches manual baselines: Ustek 2/3, Pembro post-Almas 4/5, OT01P201 2/3.
+  // Was sites*1.5 which overstated for small trials (3 → 5 instead of 4).
+  A.sites_screen = sites + 1;
   A.ctra         = sites;
   A.ec_annual    = Math.max(1, Math.ceil(total / 12));
   // subj_screen: always computed from enrolled (1.3x ratio) — never extracted
@@ -1112,7 +1115,9 @@ async function handleFile(f){
 }
 
 // v50.6: visible status banner on review screen — was previously console-only
-function updateLibraryStatusBanner() {
+// v50.7: added "Re-extract procedures" button when indication changes after upload
+function updateLibraryStatusBanner(opts) {
+  opts = opts || {};
   const banner = document.getElementById('libStatusBanner');
   const icon = document.getElementById('libStatusIcon');
   const text = document.getElementById('libStatusText');
@@ -1126,15 +1131,28 @@ function updateLibraryStatusBanner() {
   }
   banner.style.display = 'block';
   if (window.soaManifest && window.soaManifest.procedures) {
-    // Success: library mode active
-    banner.style.background = 'rgba(34, 197, 94, 0.08)';
-    banner.style.border = '1px solid rgba(34, 197, 94, 0.4)';
-    banner.style.color = '#a3e0bd';
-    icon.textContent = '✓';
-    const archetype = window.soaManifest.indication_archetype || 'unknown';
-    const procCount = window.soaManifest.procedures.length;
-    text.textContent = `Library mode active — ${procCount} procedures extracted, archetype: ${archetype.replace(/_/g, ' ')}`;
-    retryBtn.style.display = 'none';
+    if (opts.indicationChanged) {
+      // v50.7: indication changed but procedures haven't been re-extracted
+      banner.style.background = 'rgba(251, 146, 60, 0.10)';
+      banner.style.border = '1px solid rgba(251, 146, 60, 0.45)';
+      banner.style.color = '#fbb878';
+      icon.textContent = '⚠';
+      const archetype = window.soaManifest.indication_archetype || 'unknown';
+      text.textContent = `Indication changed → archetype now: ${archetype.replace(/_/g, ' ')}. Procedures still from original extraction — click Re-extract to refresh.`;
+      retryBtn.textContent = 'Re-extract procedures';
+      retryBtn.style.display = 'inline-block';
+    } else {
+      // Success: library mode active, archetype matches procedures
+      banner.style.background = 'rgba(34, 197, 94, 0.08)';
+      banner.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+      banner.style.color = '#a3e0bd';
+      icon.textContent = '✓';
+      const archetype = window.soaManifest.indication_archetype || 'unknown';
+      const procCount = window.soaManifest.procedures.length;
+      text.textContent = `Library mode active — ${procCount} procedures extracted, archetype: ${archetype.replace(/_/g, ' ')}`;
+      retryBtn.textContent = 'Re-extract';
+      retryBtn.style.display = 'none';
+    }
   } else {
     // Fell back to legacy mode
     banner.style.background = 'rgba(251, 146, 60, 0.10)';
@@ -1142,6 +1160,7 @@ function updateLibraryStatusBanner() {
     banner.style.color = '#fbb878';
     icon.textContent = '⚠';
     text.textContent = 'Schedule of Activities extraction failed — using healthy-volunteer Phase 1 baseline. Clinical costs may not reflect indication-specific procedures.';
+    retryBtn.textContent = 'Retry';
     retryBtn.style.display = 'inline-block';
   }
 }
@@ -1565,7 +1584,12 @@ function renderFields(){
           applyDealStructureDefaults();
           renderFields(); // re-render to show/hide tigermed targets and reflect new defaults
         }
+        // v50.7: re-classify archetype client-side when indication changes
+        if (field.k === 'indication') {
+          reclassifyIndicationAndRefreshBanner();
+        }
         updateBanner();updateEstimate();
+        scheduleCalcOnlyRefire(field.k);  // v50.7: refresh server-side preview
       });
     } else if(field.t==='date'){
       inp=document.createElement('input');
@@ -1582,11 +1606,103 @@ function renderFields(){
       inp.value=A[field.k]??'';
       inp.addEventListener('input',e=>{
         A[field.k]=field.t==='number'?(parseFloat(e.target.value)||0):e.target.value;
+        // v50.7: when KZ Sites changes, auto-update Sites Screened to keep them in sync
+        if (field.k === 'kz_sites') {
+          A.sites_screen = (Number(A.kz_sites) || 0) + 1;
+        }
+        // v50.7: re-classify on indication change (text input case)
+        if (field.k === 'indication') {
+          reclassifyIndicationAndRefreshBanner();
+        }
         updateBanner();updateEstimate();
+        scheduleCalcOnlyRefire(field.k);  // v50.7: refresh server-side preview
       });
     }
     div.appendChild(lbl);div.appendChild(inp);grid.appendChild(div);
   });
+}
+
+// ── v50.7: Banner refire — debounced calcOnly call when financial levers change ─────
+// Solves the "Banner ≠ File" UX issue. Pre-v50.7, Review banner showed stale calcOnly
+// from upload time; user edits to markup/contingency/sites/subj didn't propagate.
+// Now: on any field change in REFIRE_TRIGGER_FIELDS, schedule a calcOnly POST after
+// 500ms of inactivity, update the banner with the result.
+const REFIRE_TRIGGER_FIELDS = new Set([
+  'kz_sites', 'subj_enroll', 'markup', 'clin_contingency', 'vendor_mgmt_premium_rate',
+  'deal_structure', 'startup_mo', 'enroll_mo', 'treat_mo', 'followup_mo', 'closeout_mo',
+  'sal_charlie', 'sal_zach', 'sal_almas', 'sal_didar', 'sal_alex', 'sal_alexander', 'sal_shynar',
+  'startup_sal_mult', 'kz_ops_mo', 'tigermed_target_ms', 'tigermed_target_clinical',
+  'imv_1day', 'imv_2day', 'rmv', 'sae', 'susar',
+]);
+let _calcOnlyDebounce = null;
+function scheduleCalcOnlyRefire(fieldKey) {
+  if (!REFIRE_TRIGGER_FIELDS.has(fieldKey)) return;
+  if (_calcOnlyDebounce) clearTimeout(_calcOnlyDebounce);
+  _calcOnlyDebounce = setTimeout(refireCalcOnly, 500);
+}
+async function refireCalcOnly() {
+  try {
+    const resp = await fetch('/.netlify/functions/generate-excel', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ assumptions: A, soa_manifest: window.soaManifest || null, calcOnly: true }),
+    });
+    if (!resp.ok) {
+      console.warn('[Vantage] calcOnly refire returned non-OK:', resp.status);
+      return;
+    }
+    window.libraryCC = await resp.json();
+    console.log('[Vantage] Banner refreshed:', window.libraryCC);
+    updateBanner();
+  } catch (e) {
+    console.warn('[Vantage] calcOnly refire failed (non-fatal):', e.message);
+  }
+}
+
+// ── v50.7: client-side indication re-classification ───────────────────────────────
+// When user changes the indication on the Review screen, the SoA manifest's archetype
+// no longer matches. Run a lightweight client-side classifier (mirrors the keyword
+// rules in library_v1.js classifyIndication) and update the manifest's archetype
+// so the green banner reflects the right name. Does NOT re-extract procedures —
+// the user clicks the "Re-extract procedures" button for that.
+const _CLIENT_INDICATION_RULES = [
+  // [archetype, regex of keywords]
+  ['healthy_volunteer_phase1', /\b(healthy volunteer|biosimilarity|biosimilar pharmacokinetic)\b/i],
+  // Cancer veto — must come BEFORE healthy_volunteer if both match
+  ['oncology_chemo_combo',     /\b(folfirinox|folfox|folfiri|chop|gemcitabine|paclitaxel|carboplatin|cisplatin|doxorubicin|pancreatic|breast cancer|nsclc|sclc|colorectal|gastric|ovarian|prostate cancer|hepatocellular|head and neck cancer|cancer|carcinoma|tumor|tumour|malignant|oncology|metastatic)\b/i],
+  ['oncology_solid_tumor_io',  /\b(pembrolizumab|nivolumab|atezolizumab|anti-pd-1|anti-pd-l1|anti-ctla4|checkpoint inhibitor|immunotherapy)\b/i],
+  ['hematologic_malignancy',   /\b(leukemia|leukaemia|lymphoma|myeloma|mds|aml|cll|dlbcl)\b/i],
+  ['cardiology',               /\b(cardiac|heart failure|cardiomyopathy|arrhythmia|ami|coronary)\b/i],
+  ['renal_nephrology',         /\b(adpkd|polycystic kidney|chronic kidney|ckd|nephropathy|renal failure)\b/i],
+];
+function clientClassifyIndication(indStr) {
+  const s = String(indStr || '');
+  // Cancer veto: always prefer oncology if cancer terms present
+  const isCancer = /\b(cancer|tumor|tumour|carcinoma|malignant|oncology|leukemia|leukaemia|lymphoma|myeloma|metastatic)\b/i.test(s);
+  if (isCancer) {
+    // Prefer the most specific oncology archetype that matches
+    for (const [arch, rx] of _CLIENT_INDICATION_RULES) {
+      if (arch === 'healthy_volunteer_phase1') continue;
+      if (rx.test(s)) return arch;
+    }
+    return 'oncology_chemo_combo';
+  }
+  for (const [arch, rx] of _CLIENT_INDICATION_RULES) {
+    if (rx.test(s)) return arch;
+  }
+  return null;
+}
+function reclassifyIndicationAndRefreshBanner() {
+  if (!window.soaManifest) return;
+  const newArchetype = clientClassifyIndication(A.indication);
+  if (!newArchetype) return;
+  if (newArchetype !== window.soaManifest.indication_archetype) {
+    console.log('[Vantage] Indication changed → archetype: ' + window.soaManifest.indication_archetype + ' → ' + newArchetype);
+    window.soaManifest.indication_archetype = newArchetype;
+    window.soaManifest.archetype = newArchetype;  // some code paths use this name
+    // Update the green banner with new archetype + re-extract prompt
+    updateLibraryStatusBanner({ indicationChanged: true });
+  }
 }
 
 // ══════════════════════════════════════════════════════
