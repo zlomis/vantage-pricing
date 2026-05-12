@@ -1,4 +1,22 @@
 <!-- vantage-v49-encapsulated -->
+<!-- Vantage Pricing Engine v50.10-classifier-complete - 2026-05-12 -->
+<!--
+  v50.10 (2026-05-12) — client indication classifier completeness.
+    - Problem: Stelara test (indication "Ustekinumab biosimilar psoriasis")
+      produced no orange Re-extract banner despite the indication being
+      non-oncology. Root cause: client classifier had 6 archetype rules
+      but library_v1.js has 15. Anything matching dermatology, autoimmune,
+      pulmonology, hepatology, infectious disease, vaccine, cell/gene
+      therapy, ophthalmology, or neurology silently returned null →
+      reclassify exited without firing banner → user generated with stale
+      oncology archetype → oncology procedures applied to psoriasis trial.
+    - Also: "biosimilarity" regex required exact -ity suffix, didn't match
+      "biosimilar" (the user-typed form).
+    - Fix: rebuilt _CLIENT_INDICATION_RULES with all 15 library_v1 archetypes,
+      keywords copied verbatim from library_v1.js, biosimilar(?:ity)? optional
+      suffix. Order: healthy-volunteer first (biosimilar fast path), then
+      oncology family, then other systems alphabetical-ish.
+-->
 <!-- Vantage Pricing Engine v50.9-soa-retry-timeout - 2026-05-10 -->
 <!--
   v50.9 (2026-05-10) — SoA extraction reliability.
@@ -1739,20 +1757,32 @@ async function refireCalcOnly() {
 }
 
 // ── v50.7: client-side indication re-classification ───────────────────────────────
-// When user changes the indication on the Review screen, the SoA manifest's archetype
-// no longer matches. Run a lightweight client-side classifier (mirrors the keyword
-// rules in library_v1.js classifyIndication) and update the manifest's archetype
-// so the green banner reflects the right name. Does NOT re-extract procedures —
-// the user clicks the "Re-extract procedures" button for that.
+// v50.10 (2026-05-12): expanded rule set from 6 to 15 archetypes to mirror
+// library_v1.js exactly. Pre-fix: any indication not matching the original 6
+// (oncology/hematologic/cardio/renal/healthy-vol) silently returned null →
+// reclassifyIndicationAndRefreshBanner exited without firing the orange banner.
+// Discovered when "Ustekinumab biosimilar psoriasis" produced no banner change
+// even though library_v1 has dedicated autoimmune (with "psoriasis" keyword) and
+// dermatology archetypes. Also fixed "biosimilarity" regex to match "biosimilar"
+// (the user-typed form) by making the -ity suffix optional.
 const _CLIENT_INDICATION_RULES = [
   // [archetype, regex of keywords]
-  ['healthy_volunteer_phase1', /\b(healthy volunteer|biosimilarity|biosimilar pharmacokinetic)\b/i],
-  // Cancer veto — must come BEFORE healthy_volunteer if both match
+  // Cancer veto in clientClassifyIndication() always reorders these for cancer terms.
+  ['healthy_volunteer_phase1', /\b(healthy volunteer|biosimilar(?:ity)?|biosimilar pharmacokinetic)\b/i],
+  ['oncology_solid_tumor_io',  /\b(solid tumor|pembrolizumab|nivolumab|atezolizumab|anti-pd-1|anti-pd-l1|anti-ctla4|checkpoint inhibitor|immunotherapy)\b/i],
   ['oncology_chemo_combo',     /\b(folfirinox|folfox|folfiri|chop|gemcitabine|paclitaxel|carboplatin|cisplatin|doxorubicin|pancreatic|breast cancer|nsclc|sclc|colorectal|gastric|ovarian|prostate cancer|hepatocellular|head and neck cancer|cancer|carcinoma|tumor|tumour|malignant|oncology|metastatic)\b/i],
-  ['oncology_solid_tumor_io',  /\b(pembrolizumab|nivolumab|atezolizumab|anti-pd-1|anti-pd-l1|anti-ctla4|checkpoint inhibitor|immunotherapy)\b/i],
-  ['hematologic_malignancy',   /\b(leukemia|leukaemia|lymphoma|myeloma|mds|aml|cll|dlbcl)\b/i],
-  ['cardiology',               /\b(cardiac|heart failure|cardiomyopathy|arrhythmia|ami|coronary)\b/i],
-  ['renal_nephrology',         /\b(adpkd|polycystic kidney|chronic kidney|ckd|nephropathy|renal failure)\b/i],
+  ['hematologic_malignancy',   /\b(lymphoma|leukemia|leukaemia|myeloma|mds|aml|cml|cll|all|dlbcl)\b/i],
+  ['renal_nephrology',         /\b(kidney|renal|nephrology|egfr|adpkd|ckd|polycystic|tkv|nephropathy)\b/i],
+  ['cardiology',               /\b(cardiac|heart|cardiovascular|heart failure|arrhythmia|atrial fibrillation|myocardial infarction|cardiomyopathy|coronary|ami)\b/i],
+  ['pulmonology',              /\b(asthma|copd|pulmonary|lung|respiratory|bronchitis|emphysema|interstitial lung)\b/i],
+  ['neurology_cns',            /\b(cns|neuro|alzheimer|parkinson|multiple sclerosis|epilepsy|dementia|neuropathy|als)\b/i],
+  ['dermatology',              /\b(dermatology|atopic dermatitis|vitiligo|psoriatic)\b/i],
+  ['autoimmune',               /\b(autoimmune|rheumatoid|lupus|sle|ibd|crohn|ulcerative colitis|psoriasis|ankylosing spondylitis|biologic)\b/i],
+  ['hepatology',               /\b(hepatitis|cirrhosis|nash|nafld|liver|fibrosis)\b/i],
+  ['infectious_disease',       /\b(sepsis|pneumonia|uti|hiv|tb|tuberculosis|covid|antimicrobial|antibiotic|antiviral)\b/i],
+  ['vaccine',                  /\b(vaccine|vaccination|immunization|prophylaxis)\b/i],
+  ['cell_gene_therapy',        /\b(car-t|car t|gene therapy|aav|lentiviral|autologous|allogeneic)\b/i],
+  ['ophthalmology',            /\b(retinopathy|glaucoma|amd|macular|uveitis|cataract|ophthalmic)\b/i],
 ];
 function clientClassifyIndication(indStr) {
   const s = String(indStr || '');
