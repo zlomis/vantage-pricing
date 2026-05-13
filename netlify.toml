@@ -1,6 +1,9 @@
 [build]
   functions = "netlify/functions"
 
+[functions]
+  included_files = ["netlify/functions/*.md", "netlify/functions/*.json"]
+
 [[redirects]]
   from = "/api/claude"
   to = "/.netlify/functions/claude-proxy"
@@ -12,4 +15,4 @@
   status = 200
   force = true
 
-# nonce-153681
+# nonce-153682
