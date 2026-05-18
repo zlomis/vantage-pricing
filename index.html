@@ -869,7 +869,7 @@ const FIELDS = [
   {k:"date_prepared", lbl:"Date Prepared",                              grp:"Study Identity",   t:"date",   def:"",     note:"Defaults to today if blank"},
   {k:"est_start",     lbl:"Estimated Start (display only)",             grp:"Study Identity",   t:"text",   def:"Q1 2027"},
   {k:"start_mo",      lbl:"Trial Start Month (1=Jan 12=Dec)",           grp:"Timeline",         t:"number", def:1,      note:"e.g. 1 = January"},
-  {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", def:2027,   note:"Four-digit year"},
+  {k:"start_yr",      lbl:"Trial Start Year",                           grp:"Timeline",         t:"number", def:(new Date().getFullYear()+1),   note:"Four-digit year. Defaults to next year."},
   {k:"startup_mo",    lbl:"Start-Up Phase (months)",                    grp:"Timeline",         t:"number", def:4,      note:"Site selection, regulatory submissions"},
   {k:"enroll_mo",     lbl:"Enrollment / Recruitment (months)",          grp:"Timeline",         t:"number", def:6,      note:"Active patient recruitment window"},
   {k:"treat_mo",      lbl:"Treatment Period (months)",                  grp:"Timeline",         t:"number", def:1},

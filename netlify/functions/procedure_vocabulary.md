@@ -1,6 +1,6 @@
-# Vantage Clinical Cost Library v1 — Procedure Vocabulary
+# Vantage Clinical Cost Library v1.1 — Procedure Vocabulary
 
-All 298 canonical procedure names. The SoA extraction prompt must use these names character-for-character. Procedures are grouped by category to help with searching.
+All 306 canonical procedure names (added 8 bone-domain procedures in v1.1 for `endocrine_metabolic_bone` archetype). The SoA extraction prompt must use these names character-for-character. Procedures are grouped by category to help with searching.
 
 ## Site Personnel & Visits (18)
 
@@ -326,6 +326,17 @@ All 298 canonical procedure names. The SoA extraction prompt must use these name
 - `Apheresis (single session)`  $937.50  [LOW]
 - `Leukapheresis (cell harvest)`  $1145.83  [LOW]
 
+## Bone Metabolism & Imaging (8) — added v1.1
+
+- `DXA scan (bone density)`  $22.92  [HIGH]
+- `DXA scan (bone density), central reread`  $200.00  [MED]
+- `HR-pQCT (high-resolution peripheral QCT)`  $600.00  [MED]
+- `Trabecular Bone Score (TBS) overlay`  $80.00  [MED]
+- `Vertebral Fracture Assessment (VFA)`  $150.00  [MED]
+- `Bone turnover marker panel (8 analytes)`  $250.00  [MED]
+- `Calcium homeostasis bundle (5 analytes)`  $100.00  [MED]
+- `Hand-grip dynamometry + TUG`  $50.00  [LOW]
+
 ## Drug Administration (11)
 
 - `SC injection administration + post-dose obs`  $35.42  [HIGH]
@@ -340,7 +351,7 @@ All 298 canonical procedure names. The SoA extraction prompt must use these name
 - `Topical / inhalation (per dose)`  $6.25  [LOW]
 - `Ophthalmic drop administration (per visit)`  $6.25  [LOW]
 
-## Subject Compensation (6)
+## Subject Compensation (7) — updated v1.1 with SAD CRU bed-night
 
 - `Subject compensation — screening visit (healthy vol)`  $50.00  [HIGH]
 - `Subject compensation — full healthy-vol campaign`  $450.00  [HIGH]
@@ -348,6 +359,8 @@ All 298 canonical procedure names. The SoA extraction prompt must use these name
 - `Travel reimbursement (per visit)`  $25.00  [MED]
 - `Travel reimbursement — long distance (regional)`  $100.00  [LOW]
 - `Childcare / dependent care reimbursement`  $50.00  [LOW]
+
+- `SAD CRU confinement bed-night (Day -1 to Day 4)`  $250.00  [MED]
 
 ## Patient-Reported Outcomes (11)
 
