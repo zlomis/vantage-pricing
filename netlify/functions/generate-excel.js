@@ -1,4 +1,4 @@
-// vantage-v51.G-soa-functions-include
+// vantage-v51.H-embedded-soa-prompt
 // vantage-v50.7.1-archetype-normalize
 // v50.7.1 (2026-05-10) hotfix: SoA manifest field name normalization.
 //   - Sonnet returns `indication_archetype` per the prompt schema.
