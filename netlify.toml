@@ -2,7 +2,12 @@
   functions = "netlify/functions"
 
 [functions]
-  included_files = ["netlify/functions/*.md", "netlify/functions/*.json"]
+  # Markdown files used by claude-proxy.js for SoA extraction must be explicitly
+  # included in the function bundle — Netlify only packages .js by default.
+  included_files = [
+    "netlify/functions/extractSoA_prompt.md",
+    "netlify/functions/procedure_vocabulary.md"
+  ]
 
 [[redirects]]
   from = "/api/claude"
@@ -15,4 +20,4 @@
   status = 200
   force = true
 
-# nonce-160002-v51c
+# nonce-153682
