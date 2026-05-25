@@ -328,8 +328,7 @@ All 306 canonical procedure names (added 8 bone-domain procedures in v1.1 for `e
 
 ## Bone Metabolism & Imaging (8) — added v1.1
 
-- `DXA scan (bone density)`  $22.92  [HIGH]
-- `DXA scan (bone density), central reread`  $200.00  [MED]
+- `DEXA scan (bone density), central reread`  $200.00  [MED]
 - `HR-pQCT (high-resolution peripheral QCT)`  $600.00  [MED]
 - `Trabecular Bone Score (TBS) overlay`  $80.00  [MED]
 - `Vertebral Fracture Assessment (VFA)`  $150.00  [MED]

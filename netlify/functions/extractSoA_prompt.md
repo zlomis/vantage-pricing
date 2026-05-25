@@ -40,7 +40,7 @@ Return a single JSON object with exactly this shape (no markdown fences, no pros
    Do not use probability for visit reductions (use the count fields).
 
 4. **Indication archetype.** Pick the single best match. Order of evaluation:
-   - **Bone preference rule (PRIORITY):** if synopsis mentions BMD, T-score, osteoporosis, osteopenia, postmenopausal bone, bone turnover markers, DXA, HR-pQCT, TBS, or VFA, classify as `endocrine_metabolic_bone` even if healthy adults are also enrolled (mixed FIH biologic with healthy + diseased cohorts).
+   - **Bone preference rule (PRIORITY):** if synopsis mentions BMD, T-score, osteoporosis, osteopenia, postmenopausal bone, bone turnover markers, DEXA, HR-pQCT, TBS, or VFA, classify as `endocrine_metabolic_bone` even if healthy adults are also enrolled (mixed FIH biologic with healthy + diseased cohorts).
    - If protocol says "healthy volunteers" or "biosimilarity" → `healthy_volunteer_phase1`
    - Then check oncology subtypes: IO/checkpoint inhibitor → `oncology_solid_tumor_io`; chemotherapy combo (FOLFIRINOX, R-CHOP, etc.) → `oncology_chemo_combo`; lymphoma/leukemia/myeloma → `hematologic_malignancy`
    - Then specialty: renal/ADPKD → `renal_nephrology`; cardiac → `cardiology`; etc.
@@ -134,7 +134,7 @@ For Phase 1 FIH or Phase 2 trials in postmenopausal osteoporosis / osteopenia / 
 
 | Procedure | Screening | Treatment | Follow-up | Confidence |
 |---|---:|---:|---:|---|
-| `DXA scan (bone density), central reread` | 1 | 1 | 1 | MED |
+| `DEXA scan (bone density), central reread` | 1 | 1 | 1 | MED |
 | `HR-pQCT (high-resolution peripheral QCT)` | 1 | 1 | 1 | MED |
 | `Trabecular Bone Score (TBS) overlay` | 1 | 0 | 1 | MED |
 | `Vertebral Fracture Assessment (VFA)` | 1 | 0 | 1 | MED |
@@ -211,7 +211,7 @@ If synopsis explicitly states WOCBP excluded, postmenopausal only, or surgically
 | "OCT" | `Optical coherence tomography (OCT)` |
 | "BCVA", "visual acuity" | `Visual acuity (BCVA / ETDRS)` |
 | "chest X-ray", "CXR" | `Chest X-ray (PA + lateral)` |
-| "DEXA", "bone density" | `DEXA scan (bone density)` |
+| "DXA", "DEXA", "bone density", "BMD" | `DEXA scan (bone density)` |
 | "abdominal ultrasound", "abdomen US" | `Abdominal ultrasound` |
 | "renal ultrasound", "kidney US" | `Renal ultrasound (with Doppler)` |
 | "CT chest", "thoracic CT" | `CT chest — with contrast` |

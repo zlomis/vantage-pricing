@@ -1,3 +1,4 @@
+// Vantage Clinical Cost Library v1.1 (v51.C: +8 bone procedures, +Bone Metabolism & Imaging category)
 // Vantage Clinical Cost Library v1.0
 // =========================================================================
 // 298 procedures across 30 categories.
@@ -55,7 +56,8 @@ const PREMIUMS = {
   "Patient-Reported Outcomes": 2.0,
   "Cell & Gene Therapy": 3.0,
   "Vaccine Trial": 3.0,
-  "Other / Miscellaneous": 2.5
+  "Other / Miscellaneous": 2.5,
+  "Bone Metabolism & Imaging": 2.5
 };
 
 // ─── 298-procedure library ──────────────────────────────────────────────

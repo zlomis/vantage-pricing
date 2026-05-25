@@ -2,7 +2,7 @@
   "procedures": [
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 generalist",
+      "procedure": "PI / sub-investigator visit — generalist",
       "kzRetailKzt": 4500,
       "kzRetailUsd": 9.375,
       "premium": 2,
@@ -13,7 +13,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 oncology specialist",
+      "procedure": "PI / sub-investigator visit — oncology specialist",
       "kzRetailKzt": 12000,
       "kzRetailUsd": 25,
       "premium": 2,
@@ -24,7 +24,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 cardiology specialist",
+      "procedure": "PI / sub-investigator visit — cardiology specialist",
       "kzRetailKzt": 7700,
       "kzRetailUsd": 16.0416666666667,
       "premium": 2,
@@ -35,7 +35,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 nephrology specialist",
+      "procedure": "PI / sub-investigator visit — nephrology specialist",
       "kzRetailKzt": 7700,
       "kzRetailUsd": 16.0416666666667,
       "premium": 2,
@@ -46,7 +46,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 neurology specialist",
+      "procedure": "PI / sub-investigator visit — neurology specialist",
       "kzRetailKzt": 7700,
       "kzRetailUsd": 16.0416666666667,
       "premium": 2,
@@ -57,7 +57,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 pulmonology specialist",
+      "procedure": "PI / sub-investigator visit — pulmonology specialist",
       "kzRetailKzt": 7000,
       "kzRetailUsd": 14.5833333333333,
       "premium": 2,
@@ -68,7 +68,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 rheumatology specialist",
+      "procedure": "PI / sub-investigator visit — rheumatology specialist",
       "kzRetailKzt": 7000,
       "kzRetailUsd": 14.5833333333333,
       "premium": 2,
@@ -79,7 +79,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 endocrinology specialist",
+      "procedure": "PI / sub-investigator visit — endocrinology specialist",
       "kzRetailKzt": 7000,
       "kzRetailUsd": 14.5833333333333,
       "premium": 2,
@@ -90,7 +90,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 dermatology specialist",
+      "procedure": "PI / sub-investigator visit — dermatology specialist",
       "kzRetailKzt": 6500,
       "kzRetailUsd": 13.5416666666667,
       "premium": 2,
@@ -101,7 +101,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 ophthalmology specialist",
+      "procedure": "PI / sub-investigator visit — ophthalmology specialist",
       "kzRetailKzt": 6500,
       "kzRetailUsd": 13.5416666666667,
       "premium": 2,
@@ -112,13 +112,13 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "PI / sub-investigator visit \u2014 hematology specialist",
+      "procedure": "PI / sub-investigator visit — hematology specialist",
       "kzRetailKzt": 8500,
       "kzRetailUsd": 17.7083333333333,
       "premium": 2,
       "trialUnitUsd": 35.42,
       "confidence": "LOW",
-      "source": "Inferred \u2014 premium due to specialty rarity",
+      "source": "Inferred — premium due to specialty rarity",
       "notes": "Use for hematologic malignancies."
     },
     {
@@ -140,12 +140,12 @@
       "premium": null,
       "trialUnitUsd": 1000,
       "confidence": "HIGH",
-      "source": "OT-01-P201, INCLINE-102, Lonestar \u2014 universal $1,000/pt across corpus",
+      "source": "OT-01-P201, INCLINE-102, Lonestar — universal $1,000/pt across corpus",
       "notes": "Direct payment, no premium."
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "Principal Investigator flat fee \u2014 per site (generalist)",
+      "procedure": "Principal Investigator flat fee — per site (generalist)",
       "kzRetailKzt": null,
       "kzRetailUsd": null,
       "premium": null,
@@ -156,7 +156,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "Principal Investigator flat fee \u2014 per site (oncology)",
+      "procedure": "Principal Investigator flat fee — per site (oncology)",
       "kzRetailKzt": null,
       "kzRetailUsd": null,
       "premium": null,
@@ -167,7 +167,7 @@
     },
     {
       "category": "Site Personnel & Visits",
-      "procedure": "Principal Investigator flat fee \u2014 per site (specialty)",
+      "procedure": "Principal Investigator flat fee — per site (specialty)",
       "kzRetailKzt": null,
       "kzRetailUsd": null,
       "premium": null,
@@ -184,7 +184,7 @@
       "premium": 2,
       "trialUnitUsd": 33.33,
       "confidence": "MED",
-      "source": "Inferred \u2014 ~30 min PI senior time",
+      "source": "Inferred — ~30 min PI senior time",
       "notes": "OT-01-P201: $100. Often bundled with screening visit."
     },
     {
@@ -195,12 +195,12 @@
       "premium": 2,
       "trialUnitUsd": 12.5,
       "confidence": "LOW",
-      "source": "Inferred \u2014 site pharmacist time",
+      "source": "Inferred — site pharmacist time",
       "notes": "Per-dispensing-visit pharmacy fee."
     },
     {
       "category": "Hematology",
-      "procedure": "Complete blood count (CBC) \u2014 basic",
+      "procedure": "Complete blood count (CBC) — basic",
       "kzRetailKzt": 1200,
       "kzRetailUsd": 2.5,
       "premium": 3.5,
@@ -211,7 +211,7 @@
     },
     {
       "category": "Hematology",
-      "procedure": "Complete blood count (CBC) \u2014 with differential + ESR",
+      "procedure": "Complete blood count (CBC) — with differential + ESR",
       "kzRetailKzt": 1790,
       "kzRetailUsd": 3.72916666666667,
       "premium": 3.5,
@@ -613,7 +613,7 @@
       "premium": 3.5,
       "trialUnitUsd": 182.29,
       "confidence": "LOW",
-      "source": "Inferred \u2014 multiple cortisol draws + Synacthen",
+      "source": "Inferred — multiple cortisol draws + Synacthen",
       "notes": "Specialty endocrine."
     },
     {
@@ -662,7 +662,7 @@
     },
     {
       "category": "Endocrine & Hormones",
-      "procedure": "Pregnancy test \u2014 urine (\u03b2-hCG qualitative)",
+      "procedure": "Pregnancy test — urine (β-hCG qualitative)",
       "kzRetailKzt": 1500,
       "kzRetailUsd": 3.125,
       "premium": 3.5,
@@ -673,7 +673,7 @@
     },
     {
       "category": "Endocrine & Hormones",
-      "procedure": "Pregnancy test \u2014 serum (\u03b2-hCG quantitative)",
+      "procedure": "Pregnancy test — serum (β-hCG quantitative)",
       "kzRetailKzt": 2800,
       "kzRetailUsd": 5.83333333333333,
       "premium": 3.5,
@@ -1196,7 +1196,7 @@
       "premium": 3.5,
       "trialUnitUsd": 10.94,
       "confidence": "MED",
-      "source": "Inferred \u2014 consumable + nurse time",
+      "source": "Inferred — consumable + nurse time",
       "notes": "Healthy-vol Phase 1."
     },
     {
@@ -1262,7 +1262,7 @@
       "premium": 1.8,
       "trialUnitUsd": 82.5,
       "confidence": "MED",
-      "source": "Inferred \u2014 specialty echo",
+      "source": "Inferred — specialty echo",
       "notes": "Endocarditis, valve trials."
     },
     {
@@ -1328,7 +1328,7 @@
       "premium": 1.8,
       "trialUnitUsd": 15,
       "confidence": "LOW",
-      "source": "Inferred \u2014 vascular screening",
+      "source": "Inferred — vascular screening",
       "notes": ""
     },
     {
@@ -1383,7 +1383,7 @@
       "premium": 2,
       "trialUnitUsd": 18.75,
       "confidence": "MED",
-      "source": "Inferred \u2014 supervised assessment",
+      "source": "Inferred — supervised assessment",
       "notes": ""
     },
     {
@@ -1394,7 +1394,7 @@
       "premium": 2,
       "trialUnitUsd": 6.25,
       "confidence": "LOW",
-      "source": "Inferred \u2014 simple device-based",
+      "source": "Inferred — simple device-based",
       "notes": ""
     },
     {
@@ -1416,7 +1416,7 @@
       "premium": 2,
       "trialUnitUsd": 27.08,
       "confidence": "LOW",
-      "source": "Inferred \u2014 sputum collection",
+      "source": "Inferred — sputum collection",
       "notes": ""
     },
     {
@@ -1438,7 +1438,7 @@
       "premium": 2,
       "trialUnitUsd": 145.83,
       "confidence": "MED",
-      "source": "Inferred \u2014 extended EEG",
+      "source": "Inferred — extended EEG",
       "notes": ""
     },
     {
@@ -1482,7 +1482,7 @@
       "premium": 2,
       "trialUnitUsd": 14.58,
       "confidence": "MED",
-      "source": "Inferred \u2014 staff time + scoring",
+      "source": "Inferred — staff time + scoring",
       "notes": ""
     },
     {
@@ -1493,7 +1493,7 @@
       "premium": 2,
       "trialUnitUsd": 14.58,
       "confidence": "MED",
-      "source": "Inferred \u2014 staff time + scoring",
+      "source": "Inferred — staff time + scoring",
       "notes": ""
     },
     {
@@ -1504,7 +1504,7 @@
       "premium": 2,
       "trialUnitUsd": 35.42,
       "confidence": "LOW",
-      "source": "Inferred \u2014 extended cognitive by trained rater",
+      "source": "Inferred — extended cognitive by trained rater",
       "notes": "AD / dementia trials."
     },
     {
@@ -1515,12 +1515,12 @@
       "premium": 2,
       "trialUnitUsd": 27.08,
       "confidence": "MED",
-      "source": "Inferred \u2014 neurologist time premium",
+      "source": "Inferred — neurologist time premium",
       "notes": "Comprehensive neuro exam."
     },
     {
       "category": "Neurological Diagnostics",
-      "procedure": "Pure-tone audiometry \u2014 full PTA",
+      "procedure": "Pure-tone audiometry — full PTA",
       "kzRetailKzt": 4500,
       "kzRetailUsd": 9.375,
       "premium": 2,
@@ -1537,7 +1537,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "MED",
-      "source": "Inferred \u2014 ophthalmologic exam",
+      "source": "Inferred — ophthalmologic exam",
       "notes": ""
     },
     {
@@ -1619,7 +1619,7 @@
     },
     {
       "category": "ENT / Audiology",
-      "procedure": "Audiometry \u2014 basic screening",
+      "procedure": "Audiometry — basic screening",
       "kzRetailKzt": 4500,
       "kzRetailUsd": 9.375,
       "premium": 2.5,
@@ -1630,13 +1630,13 @@
     },
     {
       "category": "ENT / Audiology",
-      "procedure": "Audiometry \u2014 extended (PTA + speech + tympanometry)",
+      "procedure": "Audiometry — extended (PTA + speech + tympanometry)",
       "kzRetailKzt": 8500,
       "kzRetailUsd": 17.7083333333333,
       "premium": 2.5,
       "trialUnitUsd": 44.27,
       "confidence": "MED",
-      "source": "Inferred \u2014 full audiology workup",
+      "source": "Inferred — full audiology workup",
       "notes": ""
     },
     {
@@ -1647,7 +1647,7 @@
       "premium": 2.5,
       "trialUnitUsd": 13.02,
       "confidence": "LOW",
-      "source": "Inferred \u2014 ENT exam component",
+      "source": "Inferred — ENT exam component",
       "notes": ""
     },
     {
@@ -1663,7 +1663,7 @@
     },
     {
       "category": "Dermatologic Procedures",
-      "procedure": "Skin biopsy \u2014 punch (4mm)",
+      "procedure": "Skin biopsy — punch (4mm)",
       "kzRetailKzt": 8500,
       "kzRetailUsd": 17.7083333333333,
       "premium": 2.5,
@@ -1674,7 +1674,7 @@
     },
     {
       "category": "Dermatologic Procedures",
-      "procedure": "Skin biopsy \u2014 shave / excisional",
+      "procedure": "Skin biopsy — shave / excisional",
       "kzRetailKzt": 12000,
       "kzRetailUsd": 25,
       "premium": 2.5,
@@ -1691,7 +1691,7 @@
       "premium": 2.5,
       "trialUnitUsd": 18.23,
       "confidence": "LOW",
-      "source": "Inferred \u2014 clinical photo documentation",
+      "source": "Inferred — clinical photo documentation",
       "notes": ""
     },
     {
@@ -1702,7 +1702,7 @@
       "premium": 2.5,
       "trialUnitUsd": 13.02,
       "confidence": "LOW",
-      "source": "Inferred \u2014 trained rater scoring",
+      "source": "Inferred — trained rater scoring",
       "notes": "Psoriasis (PASI) / eczema (EASI)."
     },
     {
@@ -1713,7 +1713,7 @@
       "premium": 2.5,
       "trialUnitUsd": 7.81,
       "confidence": "LOW",
-      "source": "Inferred \u2014 IGA scoring time",
+      "source": "Inferred — IGA scoring time",
       "notes": ""
     },
     {
@@ -1728,7 +1728,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Chest X-ray (PA)",
       "kzRetailKzt": 2500,
       "kzRetailUsd": 5.20833333333333,
@@ -1739,7 +1739,7 @@
       "notes": "Pre-trial imaging."
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Chest X-ray (PA + lateral)",
       "kzRetailKzt": 3500,
       "kzRetailUsd": 7.29166666666667,
@@ -1750,8 +1750,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
-      "procedure": "X-ray \u2014 joint / limb",
+      "category": "Imaging — X-ray & Ultrasound",
+      "procedure": "X-ray — joint / limb",
       "kzRetailKzt": 3000,
       "kzRetailUsd": 6.25,
       "premium": 2.5,
@@ -1761,7 +1761,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Mammography (bilateral)",
       "kzRetailKzt": 6500,
       "kzRetailUsd": 13.5416666666667,
@@ -1772,7 +1772,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "DEXA scan (bone density)",
       "kzRetailKzt": 4500,
       "kzRetailUsd": 9.375,
@@ -1783,7 +1783,7 @@
       "notes": "Osteoporosis monitoring (LST-422 reference)."
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Abdominal ultrasound",
       "kzRetailKzt": 5500,
       "kzRetailUsd": 11.4583333333333,
@@ -1794,7 +1794,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Pelvic ultrasound",
       "kzRetailKzt": 5500,
       "kzRetailUsd": 11.4583333333333,
@@ -1805,7 +1805,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Thyroid ultrasound",
       "kzRetailKzt": 5500,
       "kzRetailUsd": 11.4583333333333,
@@ -1816,7 +1816,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Renal ultrasound (with Doppler)",
       "kzRetailKzt": 6500,
       "kzRetailUsd": 13.5416666666667,
@@ -1827,7 +1827,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 X-ray & Ultrasound",
+      "category": "Imaging — X-ray & Ultrasound",
       "procedure": "Vascular Doppler (extremities)",
       "kzRetailKzt": 7500,
       "kzRetailUsd": 15.625,
@@ -1838,8 +1838,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT brain \u2014 without contrast",
+      "category": "Imaging — CT",
+      "procedure": "CT brain — without contrast",
       "kzRetailKzt": 14000,
       "kzRetailUsd": 29.1666666666667,
       "premium": 2.5,
@@ -1849,8 +1849,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT brain \u2014 with contrast",
+      "category": "Imaging — CT",
+      "procedure": "CT brain — with contrast",
       "kzRetailKzt": 19500,
       "kzRetailUsd": 40.625,
       "premium": 2.5,
@@ -1860,8 +1860,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT chest \u2014 without contrast",
+      "category": "Imaging — CT",
+      "procedure": "CT chest — without contrast",
       "kzRetailKzt": 15000,
       "kzRetailUsd": 31.25,
       "premium": 2.5,
@@ -1871,8 +1871,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT chest \u2014 with contrast",
+      "category": "Imaging — CT",
+      "procedure": "CT chest — with contrast",
       "kzRetailKzt": 22500,
       "kzRetailUsd": 46.875,
       "premium": 2.5,
@@ -1882,8 +1882,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT abdomen / pelvis \u2014 with contrast",
+      "category": "Imaging — CT",
+      "procedure": "CT abdomen / pelvis — with contrast",
       "kzRetailKzt": 22500,
       "kzRetailUsd": 46.875,
       "premium": 2.5,
@@ -1893,8 +1893,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT chest/abdomen/pelvis (CAP) \u2014 with contrast",
+      "category": "Imaging — CT",
+      "procedure": "CT chest/abdomen/pelvis (CAP) — with contrast",
       "kzRetailKzt": 28000,
       "kzRetailUsd": 58.3333333333333,
       "premium": 2.5,
@@ -1904,7 +1904,7 @@
       "notes": "Standard oncology staging."
     },
     {
-      "category": "Imaging \u2014 CT",
+      "category": "Imaging — CT",
       "procedure": "CT angiography (chest / pulmonary)",
       "kzRetailKzt": 38000,
       "kzRetailUsd": 79.1666666666667,
@@ -1915,8 +1915,8 @@
       "notes": "PE / vascular workups."
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT \u2014 joint / extremity",
+      "category": "Imaging — CT",
+      "procedure": "CT — joint / extremity",
       "kzRetailKzt": 16500,
       "kzRetailUsd": 34.375,
       "premium": 2.5,
@@ -1926,8 +1926,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 CT",
-      "procedure": "CT \u2014 urography",
+      "category": "Imaging — CT",
+      "procedure": "CT — urography",
       "kzRetailKzt": 22500,
       "kzRetailUsd": 46.875,
       "premium": 2.5,
@@ -1937,8 +1937,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 MRI",
-      "procedure": "MRI brain \u2014 without contrast",
+      "category": "Imaging — MRI",
+      "procedure": "MRI brain — without contrast",
       "kzRetailKzt": 25500,
       "kzRetailUsd": 53.125,
       "premium": 2.8,
@@ -1948,8 +1948,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 MRI",
-      "procedure": "MRI brain \u2014 with contrast",
+      "category": "Imaging — MRI",
+      "procedure": "MRI brain — with contrast",
       "kzRetailKzt": 32000,
       "kzRetailUsd": 66.6666666666667,
       "premium": 2.8,
@@ -1959,7 +1959,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 MRI",
+      "category": "Imaging — MRI",
       "procedure": "MRI spine (any region)",
       "kzRetailKzt": 25500,
       "kzRetailUsd": 53.125,
@@ -1970,7 +1970,7 @@
       "notes": "Per-region pricing."
     },
     {
-      "category": "Imaging \u2014 MRI",
+      "category": "Imaging — MRI",
       "procedure": "MRI abdomen / pelvis",
       "kzRetailKzt": 32000,
       "kzRetailUsd": 66.6666666666667,
@@ -1981,7 +1981,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 MRI",
+      "category": "Imaging — MRI",
       "procedure": "MRI joint (knee, shoulder, hip)",
       "kzRetailKzt": 28000,
       "kzRetailUsd": 58.3333333333333,
@@ -1992,8 +1992,8 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 MRI",
-      "procedure": "MRI \u2014 kidney with volumetric reading (TKV)",
+      "category": "Imaging — MRI",
+      "procedure": "MRI — kidney with volumetric reading (TKV)",
       "kzRetailKzt": 38000,
       "kzRetailUsd": 79.1666666666667,
       "premium": 2.8,
@@ -2003,8 +2003,8 @@
       "notes": "ADPKD trials. Lonestar $480 reference revised."
     },
     {
-      "category": "Imaging \u2014 MRI",
-      "procedure": "MRI \u2014 cardiac",
+      "category": "Imaging — MRI",
+      "procedure": "MRI — cardiac",
       "kzRetailKzt": 45000,
       "kzRetailUsd": 93.75,
       "premium": 2.8,
@@ -2014,7 +2014,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 MRI",
+      "category": "Imaging — MRI",
       "procedure": "MRCP",
       "kzRetailKzt": 25500,
       "kzRetailUsd": 53.125,
@@ -2025,7 +2025,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 MRI",
+      "category": "Imaging — MRI",
       "procedure": "MR angiography",
       "kzRetailKzt": 32000,
       "kzRetailUsd": 66.6666666666667,
@@ -2036,7 +2036,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 Nuclear / PET",
+      "category": "Imaging — Nuclear / PET",
       "procedure": "PET-CT (whole body, FDG)",
       "kzRetailKzt": 280000,
       "kzRetailUsd": 583.333333333333,
@@ -2047,7 +2047,7 @@
       "notes": "Major specialty for oncology staging."
     },
     {
-      "category": "Imaging \u2014 Nuclear / PET",
+      "category": "Imaging — Nuclear / PET",
       "procedure": "Bone scan (Tc-99m)",
       "kzRetailKzt": 35000,
       "kzRetailUsd": 72.9166666666667,
@@ -2058,7 +2058,7 @@
       "notes": "Oncology bone metastasis screening."
     },
     {
-      "category": "Imaging \u2014 Nuclear / PET",
+      "category": "Imaging — Nuclear / PET",
       "procedure": "Thyroid scan (I-123)",
       "kzRetailKzt": 28000,
       "kzRetailUsd": 58.3333333333333,
@@ -2069,7 +2069,7 @@
       "notes": ""
     },
     {
-      "category": "Imaging \u2014 Nuclear / PET",
+      "category": "Imaging — Nuclear / PET",
       "procedure": "MUGA / cardiac nuclear scan",
       "kzRetailKzt": 35000,
       "kzRetailUsd": 72.9166666666667,
@@ -2087,12 +2087,12 @@
       "premium": 4,
       "trialUnitUsd": 20.83,
       "confidence": "HIGH",
-      "source": "Inferred \u2014 phlebotomy + initial processing + chain-of-custody",
+      "source": "Inferred — phlebotomy + initial processing + chain-of-custody",
       "notes": "Per-timepoint at site. Corpus convergence at $22."
     },
     {
       "category": "PK / PD / Bioanalytical",
-      "procedure": "PK bioanalysis \u2014 LC-MS/MS (per sample)",
+      "procedure": "PK bioanalysis — LC-MS/MS (per sample)",
       "kzRetailKzt": 6500,
       "kzRetailUsd": 13.5416666666667,
       "premium": 4,
@@ -2103,7 +2103,7 @@
     },
     {
       "category": "PK / PD / Bioanalytical",
-      "procedure": "PK bioanalysis \u2014 ELISA (per sample)",
+      "procedure": "PK bioanalysis — ELISA (per sample)",
       "kzRetailKzt": 5500,
       "kzRetailUsd": 11.4583333333333,
       "premium": 4,
@@ -2252,12 +2252,12 @@
       "premium": 4,
       "trialUnitUsd": 25,
       "confidence": "MED",
-      "source": "Site processing \u2014 multi-aliquot",
+      "source": "Site processing — multi-aliquot",
       "notes": "LST-422-style protocols."
     },
     {
       "category": "Tumor Tissue & Pathology",
-      "procedure": "Core tumor biopsy \u2014 image-guided",
+      "procedure": "Core tumor biopsy — image-guided",
       "kzRetailKzt": 35000,
       "kzRetailUsd": 72.9166666666667,
       "premium": 3,
@@ -2268,7 +2268,7 @@
     },
     {
       "category": "Tumor Tissue & Pathology",
-      "procedure": "Core tumor biopsy \u2014 surgical / excisional",
+      "procedure": "Core tumor biopsy — surgical / excisional",
       "kzRetailKzt": 75000,
       "kzRetailUsd": 156.25,
       "premium": 3,
@@ -2290,7 +2290,7 @@
     },
     {
       "category": "Tumor Tissue & Pathology",
-      "procedure": "Immunohistochemistry (IHC) \u2014 single marker",
+      "procedure": "Immunohistochemistry (IHC) — single marker",
       "kzRetailKzt": 8000,
       "kzRetailUsd": 16.6666666666667,
       "premium": 3,
@@ -2422,7 +2422,7 @@
     },
     {
       "category": "Genomics & Molecular",
-      "procedure": "PCR \u2014 single target",
+      "procedure": "PCR — single target",
       "kzRetailKzt": 8500,
       "kzRetailUsd": 17.7083333333333,
       "premium": 3.5,
@@ -2675,7 +2675,7 @@
     },
     {
       "category": "Specialty Procedures",
-      "procedure": "Endoscopy \u2014 upper GI (EGD), w/ biopsy",
+      "procedure": "Endoscopy — upper GI (EGD), w/ biopsy",
       "kzRetailKzt": 35000,
       "kzRetailUsd": 72.9166666666667,
       "premium": 2.5,
@@ -2780,34 +2780,34 @@
       "premium": 2,
       "trialUnitUsd": 35.42,
       "confidence": "HIGH",
-      "source": "Inferred \u2014 nurse + obs + supplies. Plenty Ustek: $40 trial",
+      "source": "Inferred — nurse + obs + supplies. Plenty Ustek: $40 trial",
       "notes": "Standard biosimilar SC."
     },
     {
       "category": "Drug Administration",
-      "procedure": "IV infusion \u2014 low-complexity (30-90 min)",
+      "procedure": "IV infusion — low-complexity (30-90 min)",
       "kzRetailKzt": 25000,
       "kzRetailUsd": 52.0833333333333,
       "premium": 2,
       "trialUnitUsd": 104.17,
       "confidence": "HIGH",
-      "source": "Inferred \u2014 nurse + line + obs. Plenty Pembro: $150 trial",
+      "source": "Inferred — nurse + line + obs. Plenty Pembro: $150 trial",
       "notes": "Pembrolizumab-style 30-min infusion."
     },
     {
       "category": "Drug Administration",
-      "procedure": "IV infusion \u2014 high-complexity / chemo regimen",
+      "procedure": "IV infusion — high-complexity / chemo regimen",
       "kzRetailKzt": 60000,
       "kzRetailUsd": 125,
       "premium": 2,
       "trialUnitUsd": 250,
       "confidence": "MED",
-      "source": "Inferred \u2014 extended nursing + chemo handling. OT-01-P201: $300",
+      "source": "Inferred — extended nursing + chemo handling. OT-01-P201: $300",
       "notes": ""
     },
     {
       "category": "Drug Administration",
-      "procedure": "Infusion day \u2014 chair + nursing (oncology cycle)",
+      "procedure": "Infusion day — chair + nursing (oncology cycle)",
       "kzRetailKzt": 12000,
       "kzRetailUsd": 25,
       "premium": 2,
@@ -2846,7 +2846,7 @@
       "premium": 2,
       "trialUnitUsd": 18.75,
       "confidence": "MED",
-      "source": "Inferred \u2014 nurse + supplies",
+      "source": "Inferred — nurse + supplies",
       "notes": ""
     },
     {
@@ -2879,7 +2879,7 @@
       "premium": 2,
       "trialUnitUsd": 6.25,
       "confidence": "LOW",
-      "source": "Inferred \u2014 nurse-supervised",
+      "source": "Inferred — nurse-supervised",
       "notes": ""
     },
     {
@@ -2890,12 +2890,12 @@
       "premium": 2,
       "trialUnitUsd": 6.25,
       "confidence": "LOW",
-      "source": "Inferred \u2014 minimal nursing time",
+      "source": "Inferred — minimal nursing time",
       "notes": ""
     },
     {
       "category": "Subject Compensation",
-      "procedure": "Subject compensation \u2014 screening visit (healthy vol)",
+      "procedure": "Subject compensation — screening visit (healthy vol)",
       "kzRetailKzt": null,
       "kzRetailUsd": null,
       "premium": null,
@@ -2906,7 +2906,7 @@
     },
     {
       "category": "Subject Compensation",
-      "procedure": "Subject compensation \u2014 full healthy-vol campaign",
+      "procedure": "Subject compensation — full healthy-vol campaign",
       "kzRetailKzt": null,
       "kzRetailUsd": null,
       "premium": null,
@@ -2917,7 +2917,7 @@
     },
     {
       "category": "Subject Compensation",
-      "procedure": "Subject compensation \u2014 patient cohort",
+      "procedure": "Subject compensation — patient cohort",
       "kzRetailKzt": null,
       "kzRetailUsd": null,
       "premium": null,
@@ -2939,13 +2939,13 @@
     },
     {
       "category": "Subject Compensation",
-      "procedure": "Travel reimbursement \u2014 long distance (regional)",
+      "procedure": "Travel reimbursement — long distance (regional)",
       "kzRetailKzt": null,
       "kzRetailUsd": null,
       "premium": null,
       "trialUnitUsd": 100,
       "confidence": "LOW",
-      "source": "Inferred \u2014 remote-region sites",
+      "source": "Inferred — remote-region sites",
       "notes": "Typically $100/visit when long-distance."
     },
     {
@@ -2967,7 +2967,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "MED",
-      "source": "Inferred \u2014 staff time for administration + scoring",
+      "source": "Inferred — staff time for administration + scoring",
       "notes": "Use for any general PRO instrument."
     },
     {
@@ -2978,7 +2978,7 @@
       "premium": null,
       "trialUnitUsd": 80,
       "confidence": "LOW",
-      "source": "Inferred \u2014 typical ePRO vendor cost",
+      "source": "Inferred — typical ePRO vendor cost",
       "notes": "One-time per enrolled patient."
     },
     {
@@ -2989,7 +2989,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "MED",
-      "source": "Inferred \u2014 standard generic PRO",
+      "source": "Inferred — standard generic PRO",
       "notes": ""
     },
     {
@@ -3000,7 +3000,7 @@
       "premium": 2,
       "trialUnitUsd": 14.58,
       "confidence": "MED",
-      "source": "Inferred \u2014 extended PRO",
+      "source": "Inferred — extended PRO",
       "notes": ""
     },
     {
@@ -3011,7 +3011,7 @@
       "premium": 2,
       "trialUnitUsd": 14.58,
       "confidence": "MED",
-      "source": "Inferred \u2014 oncology PRO standard",
+      "source": "Inferred — oncology PRO standard",
       "notes": ""
     },
     {
@@ -3022,7 +3022,7 @@
       "premium": 2,
       "trialUnitUsd": 14.58,
       "confidence": "MED",
-      "source": "Inferred \u2014 oncology PRO standard",
+      "source": "Inferred — oncology PRO standard",
       "notes": ""
     },
     {
@@ -3033,7 +3033,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "LOW",
-      "source": "Inferred \u2014 psych PRO",
+      "source": "Inferred — psych PRO",
       "notes": ""
     },
     {
@@ -3044,7 +3044,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "LOW",
-      "source": "Inferred \u2014 derm PRO",
+      "source": "Inferred — derm PRO",
       "notes": ""
     },
     {
@@ -3055,7 +3055,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "LOW",
-      "source": "Inferred \u2014 economic PRO",
+      "source": "Inferred — economic PRO",
       "notes": ""
     },
     {
@@ -3066,7 +3066,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "LOW",
-      "source": "Inferred \u2014 disease-specific (LST-422)",
+      "source": "Inferred — disease-specific (LST-422)",
       "notes": ""
     },
     {
@@ -3077,7 +3077,7 @@
       "premium": 2,
       "trialUnitUsd": 10.42,
       "confidence": "LOW",
-      "source": "Inferred \u2014 disease-specific (LST-422)",
+      "source": "Inferred — disease-specific (LST-422)",
       "notes": ""
     },
     {
@@ -3121,7 +3121,7 @@
       "premium": 3,
       "trialUnitUsd": 112.5,
       "confidence": "LOW",
-      "source": "Specialty central lab \u2014 AAV / viral vector requirement",
+      "source": "Specialty central lab — AAV / viral vector requirement",
       "notes": ""
     },
     {
@@ -3132,7 +3132,7 @@
       "premium": 3,
       "trialUnitUsd": 218.75,
       "confidence": "LOW",
-      "source": "Specialty central lab \u2014 long-term safety",
+      "source": "Specialty central lab — long-term safety",
       "notes": ""
     },
     {
@@ -3154,7 +3154,7 @@
       "premium": 3,
       "trialUnitUsd": 53.12,
       "confidence": "LOW",
-      "source": "Specialty central lab \u2014 flu vaccine standard",
+      "source": "Specialty central lab — flu vaccine standard",
       "notes": ""
     },
     {
@@ -3165,7 +3165,7 @@
       "premium": 3,
       "trialUnitUsd": 75,
       "confidence": "LOW",
-      "source": "Specialty central lab \u2014 neutralizing antibody",
+      "source": "Specialty central lab — neutralizing antibody",
       "notes": ""
     },
     {
@@ -3176,7 +3176,7 @@
       "premium": 3,
       "trialUnitUsd": 93.75,
       "confidence": "MED",
-      "source": "Specialty central lab \u2014 IFN-\u03b3 ELISpot",
+      "source": "Specialty central lab — IFN-γ ELISpot",
       "notes": ""
     },
     {
@@ -3198,12 +3198,12 @@
       "premium": 3,
       "trialUnitUsd": 28.12,
       "confidence": "MED",
-      "source": "Inferred \u2014 nurse + supplies",
+      "source": "Inferred — nurse + supplies",
       "notes": ""
     },
     {
       "category": "Other / Miscellaneous",
-      "procedure": "Physical examination \u2014 full",
+      "procedure": "Physical examination — full",
       "kzRetailKzt": 3500,
       "kzRetailUsd": 7.29166666666667,
       "premium": 2.5,
@@ -3214,13 +3214,13 @@
     },
     {
       "category": "Other / Miscellaneous",
-      "procedure": "Physical examination \u2014 symptom-directed (brief)",
+      "procedure": "Physical examination — symptom-directed (brief)",
       "kzRetailKzt": 1500,
       "kzRetailUsd": 3.125,
       "premium": 2.5,
       "trialUnitUsd": 7.81,
       "confidence": "HIGH",
-      "source": "Inferred \u2014 focused exam during routine visits",
+      "source": "Inferred — focused exam during routine visits",
       "notes": ""
     },
     {
@@ -3231,7 +3231,7 @@
       "premium": 2.5,
       "trialUnitUsd": 7.81,
       "confidence": "HIGH",
-      "source": "Inferred \u2014 bundled with nurse time at every visit",
+      "source": "Inferred — bundled with nurse time at every visit",
       "notes": "Used at every visit. Corpus convergence at $5-8."
     },
     {
@@ -3253,7 +3253,7 @@
       "premium": null,
       "trialUnitUsd": 0,
       "confidence": "MED",
-      "source": "Same as ECOG \u2014 bundled",
+      "source": "Same as ECOG — bundled",
       "notes": "Cost = 0 when bundled."
     },
     {
@@ -3264,7 +3264,7 @@
       "premium": 2.5,
       "trialUnitUsd": 156.25,
       "confidence": "MED",
-      "source": "Bundled \u2014 physical exam + safety labs + EoT documentation",
+      "source": "Bundled — physical exam + safety labs + EoT documentation",
       "notes": ""
     },
     {
@@ -3277,6 +3277,94 @@
       "confidence": "MED",
       "source": "Aggregated CBC + chem + UA at EoT",
       "notes": ""
+    },
+    {
+      "category": "Bone Metabolism & Imaging",
+      "procedure": "DEXA scan (bone density), central reread",
+      "kzRetailKzt": 38400,
+      "kzRetailUsd": 80.0,
+      "premium": 2.5,
+      "trialUnitUsd": 200.0,
+      "confidence": "MED",
+      "source": "Local DEXA scan retail base ($23.44) + central reread overhead",
+      "notes": "Added v51.C. Central reread for vendor-managed BMD analysis."
+    },
+    {
+      "category": "Bone Metabolism & Imaging",
+      "procedure": "HR-pQCT (high-resolution peripheral QCT)",
+      "kzRetailKzt": 115200,
+      "kzRetailUsd": 240.0,
+      "premium": 2.5,
+      "trialUnitUsd": 600.0,
+      "confidence": "MED",
+      "source": "High-resolution peripheral quantitative CT, specialty imaging",
+      "notes": "Added v51.C. Distal radius/tibia microarchitecture. Almaty: 1-2 centers."
+    },
+    {
+      "category": "Bone Metabolism & Imaging",
+      "procedure": "Trabecular Bone Score (TBS) overlay",
+      "kzRetailKzt": 15360,
+      "kzRetailUsd": 32.0,
+      "premium": 2.5,
+      "trialUnitUsd": 80.0,
+      "confidence": "MED",
+      "source": "Software-based overlay on DEXA images (TBS iNsight)",
+      "notes": "Added v51.C. Bundled with DEXA, requires TBS-licensed center."
+    },
+    {
+      "category": "Bone Metabolism & Imaging",
+      "procedure": "Vertebral Fracture Assessment (VFA)",
+      "kzRetailKzt": 28800,
+      "kzRetailUsd": 60.0,
+      "premium": 2.5,
+      "trialUnitUsd": 150.0,
+      "confidence": "MED",
+      "source": "Lateral DEXA imaging with morphometric analysis",
+      "notes": "Added v51.C. Identifies vertebral fractures, paired with BMD scan."
+    },
+    {
+      "category": "Endocrine & Hormones",
+      "procedure": "Bone turnover marker panel (8 analytes)",
+      "kzRetailKzt": 34286,
+      "kzRetailUsd": 71.43,
+      "premium": 3.5,
+      "trialUnitUsd": 250.0,
+      "confidence": "MED",
+      "source": "Bundled BTM panel: P1NP, CTX, OC, BAP, sclerostin, DKK1, OPG, RANKL",
+      "notes": "Added v51.C. Send-out lab if Almaty lacks sclerostin/DKK1."
+    },
+    {
+      "category": "Chemistry & Metabolic",
+      "procedure": "Calcium homeostasis bundle (5 analytes)",
+      "kzRetailKzt": 13714,
+      "kzRetailUsd": 28.57,
+      "premium": 3.5,
+      "trialUnitUsd": 100.0,
+      "confidence": "MED",
+      "source": "Bundled panel: total Ca, ionized Ca, phosphate, magnesium, 25-OH vit D",
+      "notes": "Added v51.C. Mineral homeostasis monitoring for bone-acting biologics."
+    },
+    {
+      "category": "Specialty Procedures",
+      "procedure": "Hand-grip dynamometry + TUG",
+      "kzRetailKzt": 9600,
+      "kzRetailUsd": 20.0,
+      "premium": 2.5,
+      "trialUnitUsd": 50.0,
+      "confidence": "LOW",
+      "source": "Bundled physical function: hand-grip strength + Timed Up and Go",
+      "notes": "Added v51.C. Functional outcomes for elderly/osteoporosis trials."
+    },
+    {
+      "category": "Subject Compensation",
+      "procedure": "SAD CRU confinement bed-night (Day -1 to Day 4)",
+      "kzRetailKzt": 120000,
+      "kzRetailUsd": 250.0,
+      "premium": 1.0,
+      "trialUnitUsd": 250.0,
+      "confidence": "MED",
+      "source": "CRU bed-night pass-through cost for SAD healthy volunteer confinement",
+      "notes": "Added v51.C. Default 4 nights per SAD patient unless synopsis specifies."
     }
   ],
   "premiums": {
@@ -3295,10 +3383,10 @@
     "Ophthalmologic": 2,
     "ENT / Audiology": 2.5,
     "Dermatologic Procedures": 2.5,
-    "Imaging \u2014 X-ray & Ultrasound": 2.5,
-    "Imaging \u2014 CT": 2.5,
-    "Imaging \u2014 MRI": 2.8,
-    "Imaging \u2014 Nuclear / PET": 2,
+    "Imaging — X-ray & Ultrasound": 2.5,
+    "Imaging — CT": 2.5,
+    "Imaging — MRI": 2.8,
+    "Imaging — Nuclear / PET": 2,
     "PK / PD / Bioanalytical": 4,
     "Tumor Tissue & Pathology": 3,
     "Genomics & Molecular": 3.5,
@@ -3309,6 +3397,7 @@
     "Patient-Reported Outcomes": 2,
     "Cell & Gene Therapy": 3,
     "Vaccine Trial": 3,
-    "Other / Miscellaneous": 2.5
+    "Other / Miscellaneous": 2.5,
+    "Bone Metabolism & Imaging": 2.5
   }
 }
