@@ -1,4 +1,4 @@
-<!-- vantage-v49-encapsulated -->
+<!-- vantage-v52.C-cc-styling-row105-fix-mho-merge -->
 <!-- Vantage Pricing Engine v50.10-classifier-complete - 2026-05-12 -->
 <!--
   v50.10 (2026-05-12) — client indication classifier completeness.
@@ -1366,7 +1366,13 @@ async function extractFromSynopsis(fileContent,fileType){
     '- kz_sites: Kazakhstan sites Vantage will manage. Sponsors specify patient counts not sites — almost never stated in a synopsis.',
     '  Only extract if the synopsis explicitly states KZ/Vantage-specific site count. Do NOT infer from global site counts.',
     '  Return null in virtually all cases.',
-    '- subj_enroll: total subjects to be enrolled (use the global randomized/enrolled number)',
+    '- subj_enroll: total subjects to be enrolled across the entire trial.',
+    '  CRITICAL: Use the GLOBAL/TRIAL-WIDE total enrolled number, NOT a cohort size or single arm.',
+    '  - If the synopsis says "Approximately 118 subjects across all arms" → subj_enroll: 118',
+    '  - If the synopsis breaks down enrollment as multiple cohorts (e.g. "56 SAD + 52 PMO + 10 PD substudy"), SUM all cohorts to get the trial total.',
+    '  - If the synopsis says "6 SAD cohorts of 8 patients each" → subj_enroll: 48 (NOT 6, NOT 8).',
+    '  - If you see a number like 12, 30, or 39 in isolation, double-check it is the TOTAL — partner overview documents often state cohort sizes that LOOK like a total but aren\'t.',
+    '  - When multiple plausible numbers appear, prefer the largest aggregate that reflects all-arms enrollment.',
     '- subj_screen: DO NOT extract. Return null always. Will be computed from enrolled count.',
     '',
     'REGULATORY:',
