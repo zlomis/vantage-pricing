@@ -1,10 +1,11 @@
+// vantage-v52.D-phase-blank-internal-cro-rename-spacing
 // vantage-v52.C-logo-and-style-rules-native
 // vantage-v50.5-calibration-fixes
 // v50.5 (2026-04-29):
 //  - Replicated server-side derivation block from generate-excel.js so
 //    A.imv_1day, A.sae, etc. are recomputed from current sites/subj before vantageCalcMS_word.
 //    Fixes Word log Mgmt Fee disagreeing with Excel ($741,750 vs $528,950 on OT01P201 Tigermed run).
-//  - Milestone schedule now applies % to Mgmt Fee (was Total Proposal) : matches Excel MS sheet.
+//  - Milestone schedule now applies % to Mgmt Fee (was Total Proposal): matches Excel MS sheet.
 //
 // vantage-v50-word
 // v50 changes (additive over v49):
@@ -52,12 +53,12 @@ exports.handler = async function(event, context) {
     }
 
     // ── Apply same auto-flip defaults as generate-excel.js ──────────
-    const dealStructure = (A.deal_structure === 'Tigermed') ? 'Tigermed' : 'Local CRO';
+    const dealStructure = (A.deal_structure === 'Tigermed') ? 'Tigermed': 'Local CRO';
     const isLocalCRO = dealStructure === 'Local CRO';
     A.deal_structure = dealStructure;
-    if (A.markup === undefined || A.markup === null || A.markup === '') A.markup = isLocalCRO ? 2.0 : 1.45;
-    if (A.clin_contingency === undefined || A.clin_contingency === null || A.clin_contingency === '') A.clin_contingency = isLocalCRO ? 0.5 : 0.25;
-    if (A.vendor_mgmt_premium_rate === undefined || A.vendor_mgmt_premium_rate === null || A.vendor_mgmt_premium_rate === '') A.vendor_mgmt_premium_rate = isLocalCRO ? 0.5 : 0;
+    if (A.markup === undefined || A.markup === null || A.markup === '') A.markup = isLocalCRO ? 2.0: 1.45;
+    if (A.clin_contingency === undefined || A.clin_contingency === null || A.clin_contingency === '') A.clin_contingency = isLocalCRO ? 0.5: 0.25;
+    if (A.vendor_mgmt_premium_rate === undefined || A.vendor_mgmt_premium_rate === null || A.vendor_mgmt_premium_rate === '') A.vendor_mgmt_premium_rate = isLocalCRO ? 0.5: 0;
     if (A.clin_upfront === undefined || A.clin_upfront === null || A.clin_upfront === '') A.clin_upfront = 0.10;
     if (A.startup_sal_mult === undefined || A.startup_sal_mult === null || A.startup_sal_mult === '') A.startup_sal_mult = 0.6;
     if (A.closeout_sal_mult === undefined || A.closeout_sal_mult === null || A.closeout_sal_mult === '') A.closeout_sal_mult = 1.0;
@@ -67,10 +68,10 @@ exports.handler = async function(event, context) {
       const indStr = String(A.indication || '').toLowerCase();
       const isOnco   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(indStr);
       const isCardio = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(indStr);
-      tier = isOnco ? 'Oncology' : isCardio ? 'Cardiology' : 'Other';
+      tier = isOnco ? 'Oncology': isCardio ? 'Cardiology': 'Other';
     }
     const tierIsOnco = tier === 'Oncology';
-    if (A.pi_fee === undefined || A.pi_fee === null || A.pi_fee === '') A.pi_fee = tierIsOnco ? 4000 : 2000;
+    if (A.pi_fee === undefined || A.pi_fee === null || A.pi_fee === '') A.pi_fee = tierIsOnco ? 4000: 2000;
 
     // ── Sync derived values with generate-excel.js exactly ──
     // generate-excel.js force-overrides these regardless of user input. We mirror that here
@@ -79,15 +80,15 @@ exports.handler = async function(event, context) {
     // CRITICAL: this block must stay byte-identical to the (function computeDerived)
     // block in generate-excel.js (~line 412). The two endpoints receive the same A from
     // the client, but generate-excel.js used to recompute imv_1day/sae/etc. while
-    // generate-word.js used the stale client-derived values : causing Word to show
+    // generate-word.js used the stale client-derived values: causing Word to show
     // a different Mgmt Fee (e.g., $741,750 vs Excel's $528,950 on OT01P201 with subj=18 override).
     {
-      // Server-side derived defaults (derive sites if missing : matches generate-excel.js)
+      // Server-side derived defaults (derive sites if missing: matches generate-excel.js)
       if (!A.kz_sites) {
         const is2bSites = /2b|phase\s*iib/i.test(A.phase || '');
         const is3Sites  = /phase\s*3|phase\s*iii/i.test(A.phase || '') && !is2bSites;
         const is2Sites  = /phase\s*2|phase\s*ii(?!i)/i.test(A.phase || '') || is2bSites;
-        A.kz_sites = is3Sites ? 10 : is2Sites ? 5 : 3;
+        A.kz_sites = is3Sites ? 10: is2Sites ? 5: 3;
       }
       const sites    = Number(A.kz_sites);
       const enroll   = Number(A.enroll_mo)   || 6;
@@ -101,8 +102,8 @@ exports.handler = async function(event, context) {
       const indStrW = String(A.indication || '').toLowerCase();
       const isOncoW   = /cancer|tumor|tumour|leukemia|lymphoma|myeloma|sarcoma|glioma|melanoma|oncol/i.test(indStrW);
       const isCardioW = /cardiac|heart|cardiomyopathy|arrhythmia|ami|heart failure/i.test(indStrW);
-      const saeRateW   = isOncoW ? 0.30 : isCardioW ? 0.05 : 0.10;
-      const susarRateW = isOncoW ? 0.10 : 0.05;
+      const saeRateW   = isOncoW ? 0.30: isCardioW ? 0.05: 0.10;
+      const susarRateW = isOncoW ? 0.10: 0.05;
 
       const is2bD = /2b|phase\s*iib/i.test(A.phase || '');
       const is3D  = /phase\s*3|phase\s*iii/i.test(A.phase || '') && !is2bD;
@@ -142,13 +143,13 @@ exports.handler = async function(event, context) {
     }
 
     function nA(k) { return Number(A[k]) || 0; }
-    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function esc(s) { return String(s == null ? '': s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function fmtUSD(v) { return '$' + Math.round(Number(v)||0).toLocaleString('en-US'); }
     function fmtPct(v) { return ((Number(v)||0)*100).toFixed(1) + '%'; }
 
     const studyName = A.study_name || 'Unknown Study';
     const sponsor   = A.sponsor    || ':';
-    const phase     = A.phase      || ':';
+    const phase     = A.phase      || '';
     const indication = A.indication || ':';
     const datePrep  = A.date_prepared || new Date().toISOString().slice(0,10);
     const totalMos  = (Number(A.startup_mo)||0)+(Number(A.enroll_mo)||0)+(Number(A.treat_mo)||0)+(Number(A.followup_mo)||0)+(Number(A.closeout_mo)||0);
@@ -171,15 +172,15 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
     function para(text, opts) {
       opts = opts || {};
       const { bold=false, size=20, color='000000', spaceAfter=100, spaceBefore=0, align='left' } = opts;
-      const alignXml = align !== 'left' ? `<w:jc w:val="${align}"/>` : '';
+      const alignXml = align !== 'left' ? `<w:jc w:val="${align}"/>`: '';
       const pPr = `<w:pPr><w:spacing w:before="${spaceBefore}" w:after="${spaceAfter}"/>${alignXml}${rPr({bold,color,size})}</w:pPr>`;
       return `<w:p>${pPr}<w:r>${rPr({bold,color,size})}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
     }
     function tcXml(text, opts) {
       opts = opts || {};
       const { bold=false, color=NAVY, bg=null, w=2000, align='left' } = opts;
-      const shading = bg ? `<w:shd w:val="clear" w:color="auto" w:fill="${bg}"/>` : '';
-      const alignXml = align !== 'left' ? `<w:jc w:val="${align}"/>` : '';
+      const shading = bg ? `<w:shd w:val="clear" w:color="auto" w:fill="${bg}"/>`: '';
+      const alignXml = align !== 'left' ? `<w:jc w:val="${align}"/>`: '';
       return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${shading}<w:tcBorders><w:top w:val="single" w:sz="4" w:color="CCCCCC"/><w:bottom w:val="single" w:sz="4" w:color="CCCCCC"/><w:left w:val="single" w:sz="4" w:color="CCCCCC"/><w:right w:val="single" w:sz="4" w:color="CCCCCC"/></w:tcBorders><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0"/>${alignXml}${rPr({bold,color,size:18})}</w:pPr><w:r>${rPr({bold,color,size:18})}<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p></w:tc>`;
     }
     function trXml(cells) { return `<w:tr>${cells.join('')}</w:tr>`; }
@@ -190,7 +191,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
     function kvTable(rows) {
       // Two-column key-value table
       const allRows = rows.map((r,i)=>{
-        const bg = i%2===0 ? LIGHT : null;
+        const bg = i%2===0 ? LIGHT: null;
         return trXml([
           tcXml(r[0], {color:NAVY, bg, w:3500}),
           tcXml(String(r[1]), {color:NAVY, bg, w:5572}),
@@ -238,7 +239,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
       const screen=Math.round(subj*1.3);
       const sites=Number(A.kz_sites)||3;
       const piFeeFlat=(A.pi_fee !== undefined && A.pi_fee !== null && A.pi_fee !== '')
-                       ? Number(A.pi_fee) : null;
+                       ? Number(A.pi_fee): null;
       const conting=Number(A.clin_contingency)||0;
       const markup=Number(A.markup)||2.0;
 
@@ -254,14 +255,14 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
             const trigger = lib.classifyIndication(A.indication, A.phase, A.population);
             if (trigger) piTier = trigger.piTier;
           }
-          const piFlatFeeUsd = piFeeFlat != null ? piFeeFlat : (lib.getPIFlatFee ? lib.getPIFlatFee(piTier) : 2000);
+          const piFlatFeeUsd = piFeeFlat != null ? piFeeFlat: (lib.getPIFlatFee ? lib.getPIFlatFee(piTier): 2000);
 
           const lineItems = { screening: [], treatment: [], followup: [], site: [] };
           for (const m of manifest.procedures) {
             const proc = lib.lookupProcedure(m.name);
             if (!proc) continue;
             const unit = proc.trialUnitUsd;
-            const prob = (m.probability != null ? m.probability : 1.0);
+            const prob = (m.probability != null ? m.probability: 1.0);
             const sc = Number(m.screening || 0);
             const tr = Number(m.treatment || 0);
             const fu = Number(m.followup  || 0);
@@ -275,7 +276,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
               continue;
             }
             if (proc.category === 'Site Personnel and Visits' && (m.name.includes('flat fee') || m.name.includes('Recruiter'))) {
-              const qty = m.name.includes('flat fee') ? sites : subj;
+              const qty = m.name.includes('flat fee') ? sites: subj;
               lineItems.site.push({ category: proc.category, procedure: proc.procedure, qty, unitUsd: unit, probability: prob, totalUsd: qty * unit * prob, confidence: proc.confidence });
               continue;
             }
@@ -286,7 +287,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
           // PI flat fee fallback
           const hasPIFlat = lineItems.site.some(li => li.procedure.includes('flat fee'));
           if (!hasPIFlat) {
-            lineItems.site.push({ category: 'Site Personnel and Visits', procedure: 'Principal Investigator flat fee : per site (' + piTier + ')', qty: sites, unitUsd: piFlatFeeUsd, probability: 1.0, totalUsd: sites * piFlatFeeUsd, confidence: 'HIGH' });
+            lineItems.site.push({ category: 'Site Personnel and Visits', procedure: 'Principal Investigator flat fee: per site (' + piTier + ')', qty: sites, unitUsd: piFlatFeeUsd, probability: 1.0, totalUsd: sites * piFlatFeeUsd, confidence: 'HIGH' });
           }
           const sumS = (arr) => arr.reduce((s, li) => s + li.totalUsd, 0);
           const ssub = sumS(lineItems.screening), tsub = sumS(lineItems.treatment), fsub = sumS(lineItems.followup), sisub = sumS(lineItems.site);
@@ -294,7 +295,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
           const contUsd = procBase * conting;
           const grand = procBase + contUsd + sisub;
           const grandWithMarkup = grand * markup;
-          const perPatientBlended = subj > 0 ? grand / subj : 0;
+          const perPatientBlended = subj > 0 ? grand / subj: 0;
           return {
             mode: 'library',
             f65: grandWithMarkup,
@@ -315,7 +316,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
       }
 
       // Legacy mode: $136/$1234 healthy-vol baseline (byte-identical v49 behavior)
-      const piFee = piFeeFlat != null ? piFeeFlat : 2000;
+      const piFee = piFeeFlat != null ? piFeeFlat: 2000;
       const e16=136*screen;            // PER_PATIENT_SCREENING (baseline default)
       const e36=1234*subj;             // PER_PATIENT_TREATMENT (baseline default)
       const e58=(e16+e36)*conting;
@@ -339,7 +340,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
       };
     }
     // Helper: "1 month" / "2 months" pluralization
-    const moStr = (v) => `${v} month${Number(v) === 1 ? '' : 's'}`;
+    const moStr = (v) => `${v} month${Number(v) === 1 ? '': 's'}`;
     const fin = computeFinancials();
 
     // ── Milestone schedule ─────────────────────────────────────────
@@ -384,7 +385,11 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
 
     // 2. Study Header
     body.push(para(studyName, {bold:true, size:28, color:NAVY, spaceBefore:200, spaceAfter:60}));
-    body.push(para(`${sponsor} . ${phase} . ${indication}`, {size:20, color:GRAY, spaceAfter:80}));
+    // v52.D: build sponsor/phase/indication subtitle dropping blanks and trailing periods
+    const subParts = [sponsor, phase, indication]
+      .filter(x => x && String(x).trim() && String(x).trim() !== ':')
+      .map(x => String(x).trim().replace(/\.+$/, ''));
+    body.push(para(subParts.join('. ') + (subParts.length ? '.' : ''), {size:20, color:GRAY, spaceAfter:80}));
     body.push(para(`Prepared ${datePrep} . Vantage Clinical Trials`, {size:18, color:GRAY, spaceAfter:300}));
 
     // 3. Deal Structure context
@@ -405,7 +410,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
       ['Subjects Enrolled', String(nA('subj_enroll'))],
       ['Kazakhstan Sites', String(nA('kz_sites'))],
     ]));
-    body.push(para('Note: Figures above are server-side estimates for cross-reference. The Excel model is the source of truth for invoice-grade numbers : open it to see the precise Vantage Management Fee, Vendor Management Premium calculation, and full milestone-aligned cash flow.', {size:16, color:GRAY, spaceBefore:120, spaceAfter:200}));
+    body.push(para('Note: Figures above are server-side estimates for cross-reference. The Excel model is the source of truth for invoice-grade numbers: open it to see the precise Vantage Management Fee, Vendor Management Premium calculation, and full milestone-aligned cash flow.', {size:16, color:GRAY, spaceBefore:120, spaceAfter:200}));
 
     // 5. Study Identity
     body.push(para('Study Identity', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
@@ -441,11 +446,11 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
 
     // 8. Monitoring and Safety
     body.push(para('Monitoring and Safety', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
-    const saeRateLbl = tier === 'Oncology' ? '30%' : tier === 'Cardiology' ? '5%' : '10%';
-    const susarRateLbl = tier === 'Oncology' ? '10%' : '5%';
+    const saeRateLbl = tier === 'Oncology' ? '30%': tier === 'Cardiology' ? '5%': '10%';
+    const susarRateLbl = tier === 'Oncology' ? '10%': '5%';
     body.push(kvTable([
-      ['IMV : 1 Day', String(nA('imv_1day'))],
-      ['IMV : 2 Day', String(nA('imv_2day'))],
+      ['IMV: 1 Day', String(nA('imv_1day'))],
+      ['IMV: 2 Day', String(nA('imv_2day'))],
       ['Remote Monitoring Visits', String(nA('rmv'))],
       ['Site Initiation Visits', String(nA('siv'))],
       ['Site Close-Out Visits', String(nA('cov'))],
@@ -458,7 +463,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
     body.push(para('Project Management', {bold:true, size:24, color:BLUE, spaceBefore:200, spaceAfter:100}));
     body.push(kvTable([
       ['Sponsor TCs (biweekly)', String(nA('tc_sponsor'))],
-      ['Internal CRO TCs', String(nA('tc_internal'))],
+      ['Internal Project Team TCs', String(nA('tc_internal'))],
       ['Site Payments Processed', String(nA('site_pay'))],
       ['Periodic Safety Reports', String(nA('periodic_saf'))],
     ]));
@@ -474,8 +479,8 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
       ['KZ In-Country Operations / Month', fmtUSD(A.kz_ops_mo)],
     ];
     if (dealStructure === 'Tigermed') {
-      finRows.push(['Tigermed Target : Management Services', fmtUSD(A.tigermed_target_ms)]);
-      finRows.push(['Tigermed Target : Clinical Trial Services', fmtUSD(A.tigermed_target_clinical)]);
+      finRows.push(['Tigermed Target: Management Services', fmtUSD(A.tigermed_target_ms)]);
+      finRows.push(['Tigermed Target: Clinical Trial Services', fmtUSD(A.tigermed_target_clinical)]);
     }
     body.push(kvTable(finRows));
 
@@ -501,7 +506,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
       ['Annual Compliance Audit', fmtUSD(A.audit_annual)],
     ];
     if (nA('referral_pct') > 0) {
-      const refLabel = A.referral_name ? `Referral Partner (${A.referral_name})` : 'Referral Partner Commission';
+      const refLabel = A.referral_name ? `Referral Partner (${A.referral_name})`: 'Referral Partner Commission';
       opexRows.push([refLabel, fmtPct(A.referral_pct)]);
     }
     body.push(kvTable(opexRows));
@@ -521,7 +526,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
       tcXml('Timing',       {bold:true, color:'FFFFFF', bg:BLUE, w:3672}),
     ]);
     const msBody = milestones.map((m,i)=>{
-      const bg = i%2===0 ? LIGHT : null;
+      const bg = i%2===0 ? LIGHT: null;
       return trXml([
         tcXml(m.lbl, {color:NAVY, bg, w:2400}),
         tcXml(m.pct + '%', {color:GRAY, bg, w:1200}),
@@ -533,7 +538,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
 
     // 15. Sensitivity Scenarios (Local CRO only)
     if (isLocalCRO) {
-      body.push(para('Sensitivity Scenarios : Local CRO Quote', {bold:true, size:24, color:BLUE, spaceBefore:300, spaceAfter:100}));
+      body.push(para('Sensitivity Scenarios: Local CRO Quote', {bold:true, size:24, color:BLUE, spaceBefore:300, spaceAfter:100}));
       body.push(para('The Excel model includes scenario sensitivity at 100%, 85%, and 70% of the Local CRO envelope (assuming favourable negotiation). Refer to the Internal Overview tab for distributable margin and recommended monthly draws under each scenario.', {size:18, color:NAVY, spaceAfter:200}));
     }
 
@@ -541,7 +546,7 @@ const LOGO_PNG_B64 = "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCACoAhQDACIAAREBAhEB/9sAQw
     const safeName = studyName.replace(/\s+/g,'_').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
     body.push(para('Source Model', {bold:true, size:24, color:BLUE, spaceBefore:300, spaceAfter:100}));
     body.push(para(`Companion Excel file: Vantage_Pricing_${safeName}.xlsx`, {size:18, color:NAVY, spaceAfter:60}));
-    body.push(para(`Baseline template: Vantage_Pricing_Model_Baseline_v2.xlsx (8 sheets : Cover, Assumptions, Vantage Output, Sponsor Output, Internal Overview, Management Services, Clinical Costs, Profit and Loss).`, {size:18, color:NAVY, spaceAfter:200}));
+    body.push(para(`Baseline template: Vantage_Pricing_Model_Baseline_v2.xlsx (8 sheets: Cover, Assumptions, Vantage Output, Sponsor Output, Internal Overview, Management Services, Clinical Costs, Profit and Loss).`, {size:18, color:NAVY, spaceAfter:200}));
 
     // Footer
     body.push(para('', {spaceAfter:200}));
