@@ -1,4 +1,4 @@
-// vantage-v52.F-century-gothic-restore-tstr-meta-cells
+// vantage-v52.H-financial-levers-as-literals
 // vantage-v52.D-row-cascade-numbering-em-dash-sweep
 // vantage-v52.C-cc-styling-row105-fix-mho-merge
 // vantage-v52.B-cohort-prob-aware-cc-formulas
@@ -680,13 +680,27 @@ exports.handler = async function(event, context) {
     }
 
     // ── Assumptions cell writes ──────────────────────────────────────
-    // Study Identity (shared strings) — Cover B8-B12 are formulas referencing these
-    xml2 = setSharedStr(xml2, 'B5', A.study_name);
-    xml2 = setSharedStr(xml2, 'B6', A.sponsor);
-    xml2 = setSharedStr(xml2, 'B7', A.phase);
-    xml2 = setSharedStr(xml2, 'B8', A.indication);
-    // B9: Deal Structure (drives Sponsor Output IF formulas, MS premium auto-zero)
-    xml2 = setSharedStr(xml2, 'B9', A.deal_structure);
+    // Study Identity — Assumptions B5/B6/B7/B8/B9 use t="inlineStr" in the baseline,
+    // not shared-string-indexed. setSharedStr's regex (which expects <v>) was failing
+    // silently, leaving the baseline placeholders ("[Study Name / Protocol]", "[Sponsor]",
+    // "[Indication / Disease Area]") in the output. v52.G fix: write inline-string format
+    // directly so the user's actual values land.
+    function setInlineStr(ref, val) {
+      if (val === undefined || val === null || val === '') return;
+      const safe = esc(String(val));
+      // Match the entire cell whether it currently uses inlineStr, shared-string, or value form.
+      const pat = new RegExp('<c r="' + ref + '"([^>]*?)>(?:<is>.*?</is>|<f[^>]*>[^<]*</f>(?:<v>[^<]*</v>)?|<v>[^<]*</v>)?</c>', 's');
+      xml2 = xml2.replace(pat, function(match, attrs) {
+        // Strip any existing t="..." then add t="inlineStr"
+        const cleaned = attrs.replace(/\s*t="[^"]*"/g, '');
+        return '<c r="' + ref + '"' + cleaned + ' t="inlineStr"><is><t xml:space="preserve">' + safe + '</t></is></c>';
+      });
+    }
+    setInlineStr('B5', A.study_name);
+    setInlineStr('B6', A.sponsor);
+    setInlineStr('B7', A.phase);
+    setInlineStr('B8', A.indication);
+    setInlineStr('B9', A.deal_structure);
 
     // Timeline
     setNum('B11', A.start_mo);   setNum('B12', A.start_yr);
@@ -723,10 +737,15 @@ exports.handler = async function(event, context) {
     xml2 = patchCachedIn(xml2, 'B48', A.periodic_saf);
 
     // Financial — markup, contingency, upfront, KZ ops
-    xml2 = patchCachedIn(xml2, 'B53', A.markup);
+    // v52.H: B53, B58, B103 must be LITERALS not formulas. Baseline had them as
+    // =IF(B9="Tigermed",X,Y), which means Excel recomputed on reopen and overwrote
+    // user-set values (e.g. user picks markup 2.5 on Local CRO; formula returns 2.0).
+    // setNum strips the formula; user input wins. Auto-flip-by-deal-structure is sacrificed
+    // for value fidelity — users adjust the cell directly if they change deal structure later.
+    setNum('B53', A.markup);
     setNum('B55', A.clin_upfront);
     setNum('B57', A.kz_ops_mo);
-    xml2 = patchCachedIn(xml2, 'B58', A.clin_contingency);
+    setNum('B58', A.clin_contingency);
 
     // Team Salaries (B67 is auto =SUM(B60:B66))
     setNum('B60', A.sal_charlie); setNum('B61', A.sal_zach);   setNum('B62', A.sal_almas);
@@ -746,7 +765,7 @@ exports.handler = async function(event, context) {
     // Tigermed targets (B101, B102) and Vendor Mgmt Premium Rate (B103)
     setNum('B101', A.tigermed_target_ms);
     setNum('B102', A.tigermed_target_clinical);
-    xml2 = patchCachedIn(xml2, 'B103', A.vendor_mgmt_premium_rate);
+    setNum('B103', A.vendor_mgmt_premium_rate);  // v52.H: same fix as B53/B58 — strip IF formula so user value wins on reopen
 
     // ── v50.5: Cached-value patches for Assumptions formula cells ─────
     // These cells have formulas that depend on values we just setNum'd.
